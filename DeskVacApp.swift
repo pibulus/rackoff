@@ -20,13 +20,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         
         if let statusButton = statusItem.button {
-            statusButton.image = NSImage(systemSymbolName: "archivebox", accessibilityDescription: "DeskVac")
+            statusButton.image = NSImage(systemSymbolName: "sparkles", accessibilityDescription: "RackOff")
             statusButton.action = #selector(togglePopover)
         }
         
         // Setup popover
         let contentView = ContentView()
-        popover.contentSize = NSSize(width: 360, height: 480)
+        popover.contentSize = NSSize(width: 280, height: 420)
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(rootView: contentView)
     }

@@ -2,117 +2,62 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var vacManager = VacManager()
-    @State private var showingFolderPicker = false
     @State private var isVacuuming = false
     
     var body: some View {
         VStack(spacing: 20) {
-            // Header
-            HStack {
-                Image(systemName: "archivebox.fill")
-                    .font(.largeTitle)
-                    .foregroundColor(.accentColor)
-                Text("DeskVac")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                Spacer()
-            }
-            .padding(.horizontal)
-            
-            // File Types Section
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Vacuum These Files")
-                    .font(.headline)
+            // Clean header
+            VStack(spacing: 6) {
+                Text("RackOff")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                Text("Clean desk. Clear mind.")
+                    .font(.system(size: 13))
                     .foregroundColor(.secondary)
-                
+            }
+            .padding(.top, 8)
+            
+            // File types - simple list
+            VStack(alignment: .leading, spacing: 0) {
                 ForEach(vacManager.fileTypes) { fileType in
                     FileTypeRow(fileType: fileType, vacManager: vacManager)
-                }
-            }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(12)
-            
-            // Folders Section  
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Locations")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                HStack {
-                    Image(systemName: "folder")
-                    Text("From: \(vacManager.sourceFolder.lastPathComponent)")
-                        .lineLimit(1)
-                    Spacer()
-                    Button("Change") {
-                        pickFolder(isSource: true)
+                    if fileType.id != vacManager.fileTypes.last?.id {
+                        Divider()
+                            .padding(.leading, 40)
                     }
-                    .buttonStyle(.bordered)
-                }
-                
-                HStack {
-                    Image(systemName: "archivebox")
-                    Text("To: \(vacManager.destinationFolder.lastPathComponent)")
-                        .lineLimit(1)
-                    Spacer()
-                    Button("Change") {
-                        pickFolder(isSource: false)
-                    }
-                    .buttonStyle(.bordered)
                 }
             }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(12)
-            
-            // Schedule Section
-            Picker("Run", selection: $vacManager.schedule) {
-                Text("Manual").tag(Schedule.manual)
-                Text("On Launch").tag(Schedule.onLaunch)
-                Text("Daily").tag(Schedule.daily)
-            }
-            .pickerStyle(.segmented)
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(10)
             
             Spacer()
             
-            // Action Button
+            // Simple schedule selector
+            Picker("", selection: $vacManager.schedule) {
+                Text("Manual").tag(Schedule.manual)
+                Text("Daily").tag(Schedule.daily)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            
+            // Big clean button
             Button(action: performVacuum) {
-                if isVacuuming {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                        .frame(width: 20, height: 20)
-                } else {
-                    Label("Vacuum Now", systemImage: "sparkles")
+                HStack {
+                    if isVacuuming {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .progressViewStyle(CircularProgressViewStyle())
+                    }
+                    Text(isVacuuming ? "Cleaning..." : "Clean Now")
+                        .font(.system(size: 16, weight: .medium))
                 }
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
             }
             .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             .disabled(isVacuuming)
-            
-            // Status
-            if let lastRun = vacManager.lastRun {
-                Text("Last run: \(lastRun, formatter: dateFormatter)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
         }
-        .padding()
-        .frame(width: 360, height: 480)
-    }
-    
-    func pickFolder(isSource: Bool) {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        
-        if panel.runModal() == .OK, let url = panel.url {
-            if isSource {
-                vacManager.sourceFolder = url
-            } else {
-                vacManager.destinationFolder = url
-            }
-        }
+        .padding(20)
+        .frame(width: 280, height: 420)
     }
     
     func performVacuum() {
@@ -126,13 +71,6 @@ struct ContentView: View {
             }
         }
     }
-    
-    var dateFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        return formatter
-    }
 }
 
 struct FileTypeRow: View {
@@ -142,14 +80,18 @@ struct FileTypeRow: View {
     var body: some View {
         HStack {
             Image(systemName: fileType.icon)
-                .foregroundColor(fileType.isEnabled ? .accentColor : .gray)
+                .font(.system(size: 18))
+                .foregroundColor(fileType.isEnabled ? .accentColor : .secondary)
+                .frame(width: 24)
             
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(fileType.name)
-                    .font(.system(.body, design: .rounded))
-                Text(fileType.extensions.joined(separator: ", "))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 13, weight: .medium))
+                if fileType.isEnabled {
+                    Text(fileType.extensions.prefix(3).joined(separator: ", "))
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
             }
             
             Spacer()
@@ -158,8 +100,15 @@ struct FileTypeRow: View {
                 get: { fileType.isEnabled },
                 set: { vacManager.toggleFileType(fileType, enabled: $0) }
             ))
+            .toggleStyle(SwitchToggleStyle())
             .labelsHidden()
+            .scaleEffect(0.75)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            vacManager.toggleFileType(fileType, enabled: !fileType.isEnabled)
+        }
     }
 }
