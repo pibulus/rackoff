@@ -7,9 +7,9 @@ struct ContentView: View {
     @State private var buttonHovered = false
     
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 24) {
             // RackOff branding - bring it back!
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
                 HStack(spacing: 8) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 20, weight: .medium))
@@ -36,10 +36,10 @@ struct ContentView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
             }
-            .padding(.top, 8)
+            .padding(.top, 12)
             
             // File types with more color
-            VStack(spacing: 4) {
+            VStack(spacing: 8) {
                 ForEach(vacManager.fileTypes) { fileType in
                     FileTypeRow(
                         fileType: fileType,
@@ -53,9 +53,9 @@ struct ContentView: View {
                     }
                 }
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 8)
             
-            Spacer()
+            Spacer(minLength: 20)
             
             // Schedule toggle - cleaner
             Picker("", selection: $vacManager.schedule) {
@@ -128,8 +128,8 @@ struct ContentView: View {
                 }
             }
         }
-        .padding(20)
-        .frame(width: 320, height: 460)
+        .padding(24)
+        .frame(width: 340, height: 500)
     }
     
     func performVacuum() {
@@ -197,8 +197,8 @@ struct FileTypeRow: View {
             .labelsHidden()
             .scaleEffect(0.85)
         }
-        .padding(.vertical, 11)
-        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(isHovered ? 
