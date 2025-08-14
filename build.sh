@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # ===================================================================
-# DeskVac App Builder
+# RackOff App Builder
 # ===================================================================
 
-APP_NAME="DeskVac"
-BUNDLE_ID="com.pablo.deskvac"
+APP_NAME="RackOff"
+BUNDLE_ID="com.pablo.rackoff"
 VERSION="1.0"
 
 echo "🛠 Building $APP_NAME..."
@@ -15,7 +15,7 @@ mkdir -p "$APP_NAME.app/Contents/MacOS"
 mkdir -p "$APP_NAME.app/Contents/Resources"
 
 # Compile Swift files
-swiftc DeskVacApp.swift ContentView.swift VacManager.swift \
+swiftc RackOffApp.swift ContentView.swift VacManager.swift \
     -o "$APP_NAME.app/Contents/MacOS/$APP_NAME" \
     -target arm64-apple-macos12.0 \
     -framework SwiftUI \

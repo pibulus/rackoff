@@ -5,9 +5,11 @@ struct ContentView: View {
     @State private var isVacuuming = false
     @State private var hoveredRow: UUID? = nil
     @State private var buttonHovered = false
+    @State private var vacuumProgress = 0.0
+    @State private var showSuccess = false
     
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 20) {
             // RackOff branding - bring it back!
             VStack(spacing: 6) {
                 HStack(spacing: 8) {
@@ -36,7 +38,6 @@ struct ContentView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
             }
-            .padding(.top, 12)
             
             // File types with more color
             VStack(spacing: 8) {
@@ -55,7 +56,7 @@ struct ContentView: View {
             }
             .padding(.vertical, 8)
             
-            Spacer(minLength: 20)
+            Spacer(minLength: 10)
             
             // Schedule toggle - cleaner
             Picker("", selection: $vacManager.schedule) {
@@ -88,13 +89,17 @@ struct ContentView: View {
                             ProgressView()
                                 .scaleEffect(0.8)
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else if showSuccess {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                                .transition(.scale.combined(with: .opacity))
                         } else {
                             Image(systemName: "wand.and.stars")
                                 .font(.system(size: 16, weight: .semibold))
                                 .rotationEffect(.degrees(buttonHovered ? -10 : 0))
                                 .animation(.spring(response: 0.3, dampingFraction: 0.6), value: buttonHovered)
                         }
-                        Text(isVacuuming ? "Cleaning..." : "Clean Now")
+                        Text(isVacuuming ? "Cleaning..." : (showSuccess ? "All Clean!" : "Clean Now"))
                             .font(.system(size: 17, weight: .bold))
                     }
                     .foregroundColor(.white)
@@ -127,22 +132,62 @@ struct ContentView: View {
                     buttonHovered = hovering
                 }
             }
+            
+            // Quit button
+            Button(action: {
+                NSApplication.shared.terminate(nil)
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "power")
+                        .font(.system(size: 12))
+                    Text("Quit RackOff")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .foregroundColor(.secondary)
+                .frame(width: 100, height: 32)
+                .background(Color(NSColor.controlBackgroundColor).opacity(0.8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                )
+                .cornerRadius(8)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .padding(.top, 12)
         }
-        .padding(24)
-        .frame(width: 340, height: 500)
+        .padding(.horizontal, 24)
+        .padding(.top, 80)
+        .padding(.bottom, 28)
+        .frame(width: 340, height: 610)
     }
     
     func performVacuum() {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
             isVacuuming = true
+            showSuccess = false
         }
         
         Task {
+            // Add a small delay for the "processing" feel
+            try? await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
+            
             await vacManager.vacuum()
+            
+            // Another small delay before showing success
+            try? await Task.sleep(nanoseconds: 400_000_000) // 0.4 seconds
             
             await MainActor.run {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     isVacuuming = false
+                    showSuccess = true
+                }
+                
+                // Reset success state after 2 seconds
+                Task {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        showSuccess = false
+                    }
                 }
             }
         }

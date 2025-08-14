@@ -105,7 +105,22 @@ class VacManager: ObservableObject {
             let files = findFiles(ofType: fileType)
             
             for file in files {
-                let destination = todayFolder.appendingPathComponent(file.lastPathComponent)
+                let fileName = file.lastPathComponent
+                var destination = todayFolder.appendingPathComponent(fileName)
+                
+                // If file already exists in destination, add a number suffix
+                if FileManager.default.fileExists(atPath: destination.path) {
+                    let nameWithoutExtension = file.deletingPathExtension().lastPathComponent
+                    let fileExtension = file.pathExtension
+                    var counter = 2
+                    
+                    repeat {
+                        let newName = "\(nameWithoutExtension) \(counter).\(fileExtension)"
+                        destination = todayFolder.appendingPathComponent(newName)
+                        counter += 1
+                    } while FileManager.default.fileExists(atPath: destination.path)
+                }
+                
                 do {
                     try FileManager.default.moveItem(at: file, to: destination)
                     movedCount += 1

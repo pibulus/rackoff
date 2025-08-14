@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pkill:*)",
+      "Bash(rolldice:*)"
+    ],
+    "additionalDirectories": [
+      "/Users/pabloalvarado/Desktop"
+    ]
+  }
+}
