@@ -91,6 +91,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var aboutPopover = NSPopover()
     var currentIconStyle: MenuIconStyle = .sparkles
     var isPressed: Bool = false
+    var contextMenu: NSMenu!
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Load icon style preference
@@ -120,6 +121,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         aboutPopover.contentSize = NSSize(width: 300, height: 220)
         aboutPopover.behavior = .transient
         aboutPopover.contentViewController = NSHostingController(rootView: aboutView)
+        
+        // Setup context menu once
+        setupContextMenu()
     }
     
     @objc func handleClick() {
@@ -137,10 +141,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
-    private func showContextMenu() {
-        let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "About RackOff", action: #selector(showAbout), keyEquivalent: ""))
-        menu.addItem(NSMenuItem.separator())
+    private func setupContextMenu() {
+        contextMenu = NSMenu()
+        contextMenu.addItem(NSMenuItem(title: "About RackOff", action: #selector(showAbout), keyEquivalent: ""))
+        contextMenu.addItem(NSMenuItem.separator())
         
         // Add icon style submenu
         let styleMenu = NSMenu()
@@ -154,14 +158,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         let styleMenuItem = NSMenuItem(title: "Icon Style", action: nil, keyEquivalent: "")
         styleMenuItem.submenu = styleMenu
-        menu.addItem(styleMenuItem)
+        contextMenu.addItem(styleMenuItem)
         
-        menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q"))
+        contextMenu.addItem(NSMenuItem.separator())
+        contextMenu.addItem(NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q"))
+    }
+    
+    private func showContextMenu() {
+        // Update checkmarks before showing
+        updateMenuCheckmarks()
         
         // Show menu at button location
         if let button = statusItem.button {
-            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height), in: button)
+            contextMenu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height), in: button)
+        }
+    }
+    
+    private func updateMenuCheckmarks() {
+        if let styleMenuItem = contextMenu.item(withTitle: "Icon Style"),
+           let styleSubmenu = styleMenuItem.submenu {
+            for item in styleSubmenu.items {
+                if let itemStyle = item.representedObject as? MenuIconStyle {
+                    item.state = (itemStyle == currentIconStyle) ? .on : .off
+                }
+            }
         }
     }
     
@@ -180,6 +200,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         currentIconStyle = style
         UserDefaults.standard.set(style.rawValue, forKey: "menuIconStyle")
         statusItem.button?.image = createIconImage()
+        // Menu checkmarks are updated automatically when shown next time
     }
     
     @objc func togglePopover() {

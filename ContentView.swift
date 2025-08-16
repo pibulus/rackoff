@@ -168,26 +168,27 @@ struct ContentView: View {
         }
         
         Task {
-            // Add a small delay for the "processing" feel
-            try? await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
+            // Add processing delay for UX feel
+            try? await Task.sleep(nanoseconds: 800_000_000) // 0.8s
             
             await vacManager.vacuum()
             
-            // Another small delay before showing success
-            try? await Task.sleep(nanoseconds: 400_000_000) // 0.4 seconds
+            // Brief delay before showing success
+            try? await Task.sleep(nanoseconds: 400_000_000) // 0.4s
             
             await MainActor.run {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     isVacuuming = false
                     showSuccess = true
                 }
-                
-                // Reset success state after 2 seconds
-                Task {
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    withAnimation(.easeOut(duration: 0.3)) {
-                        showSuccess = false
-                    }
+            }
+            
+            // Reset success state after delay
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2s
+            
+            await MainActor.run {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    showSuccess = false
                 }
             }
         }
