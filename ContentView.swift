@@ -45,7 +45,8 @@ struct ContentView: View {
                     FileTypeRow(
                         fileType: fileType,
                         vacManager: vacManager,
-                        isHovered: hoveredRow == fileType.id
+                        isHovered: hoveredRow == fileType.id,
+                        organizationMode: vacManager.organizationMode
                     )
                     .onHover { hovering in
                         withAnimation(.easeInOut(duration: 0.15)) {
@@ -58,13 +59,20 @@ struct ContentView: View {
             
             Spacer(minLength: 10)
             
-            // Schedule toggle - cleaner
-            Picker("", selection: $vacManager.schedule) {
-                Text("Manual").tag(Schedule.manual)
-                Text("Daily").tag(Schedule.daily)
+            // Organization Mode selector
+            VStack(spacing: 8) {
+                Text("Organization")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                Picker("", selection: $vacManager.organizationMode) {
+                    Text("Quick Archive").tag(OrganizationMode.quickArchive)
+                    Text("Sort by Type").tag(OrganizationMode.sortByType) 
+                    Text("Smart Clean").tag(OrganizationMode.smartClean)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
             
             // THE LUSH CLEAN NOW BUTTON
             Button(action: performVacuum) {
@@ -199,6 +207,7 @@ struct FileTypeRow: View {
     let fileType: FileType
     @ObservedObject var vacManager: VacManager
     let isHovered: Bool
+    let organizationMode: OrganizationMode
     
     // Color per file type
     var accentColor: Color {
@@ -209,6 +218,29 @@ struct FileTypeRow: View {
         case "Downloads": return Color(red: 0.8, green: 0.4, blue: 0.8)
         case "Documents": return Color(red: 0.6, green: 0.5, blue: 0.9)
         default: return Color.accentColor
+        }
+    }
+    
+    // Destination text based on organization mode
+    var destinationText: String? {
+        switch organizationMode {
+        case .quickArchive:
+            return "→ Daily"
+        case .sortByType:
+            return "→ \(fileType.name)/"
+        case .smartClean:
+            switch fileType.destination {
+            case .daily:
+                return "→ Daily"
+            case .weekly:
+                return "→ Weekly"
+            case .monthly:
+                return "→ Monthly"
+            case .typeFolder:
+                return "→ \(fileType.name)/"
+            case .skip:
+                return "→ Skip"
+            }
         }
     }
     
@@ -225,11 +257,21 @@ struct FileTypeRow: View {
                 Text(fileType.name)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(fileType.isEnabled ? .primary : .secondary)
-                if fileType.isEnabled {
-                    Text(fileType.extensions.prefix(3).joined(separator: ", "))
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .opacity(0.7)
+                
+                HStack(spacing: 8) {
+                    if fileType.isEnabled {
+                        Text(fileType.extensions.prefix(3).joined(separator: ", "))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .opacity(0.7)
+                    }
+                    
+                    if let destinationText = destinationText, fileType.isEnabled {
+                        Text(destinationText)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(accentColor)
+                            .opacity(0.8)
+                    }
                 }
             }
             

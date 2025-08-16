@@ -8,6 +8,20 @@ enum Schedule: String, CaseIterable {
     case daily = "Daily"
 }
 
+enum OrganizationMode: String, CaseIterable {
+    case quickArchive = "Quick Archive"
+    case sortByType = "Sort by Type"
+    case smartClean = "Smart Clean"
+}
+
+enum FileDestination: String, CaseIterable {
+    case daily = "Daily"
+    case weekly = "Weekly"
+    case monthly = "Monthly"
+    case typeFolder = "Type Folder"
+    case skip = "Skip"
+}
+
 class FileType: Identifiable, ObservableObject {
     let id = UUID()
     let name: String
@@ -15,13 +29,15 @@ class FileType: Identifiable, ObservableObject {
     let icon: String
     let patterns: [String]
     @Published var isEnabled: Bool
+    @Published var destination: FileDestination
     
-    init(name: String, extensions: [String], icon: String, patterns: [String], isEnabled: Bool = false) {
+    init(name: String, extensions: [String], icon: String, patterns: [String], isEnabled: Bool = false, destination: FileDestination = .daily) {
         self.name = name
         self.extensions = extensions
         self.icon = icon
         self.patterns = patterns
         self.isEnabled = isEnabled
+        self.destination = destination
     }
 }
 
@@ -33,41 +49,47 @@ class VacManager: ObservableObject {
             extensions: [".jpg", ".png", ".jpeg"],
             icon: "camera.viewfinder",
             patterns: ["screenshot", "Screenshot", "Screen Shot"],
-            isEnabled: true
+            isEnabled: true,
+            destination: .daily
         ),
         FileType(
             name: "PDFs",
             extensions: [".pdf"],
             icon: "doc.fill",
             patterns: ["*.pdf"],
-            isEnabled: false
+            isEnabled: false,
+            destination: .typeFolder
         ),
         FileType(
             name: "Images",
             extensions: [".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic"],
             icon: "photo",
             patterns: ["*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp", "*.heic"],
-            isEnabled: false
+            isEnabled: false,
+            destination: .typeFolder
         ),
         FileType(
             name: "Downloads",
             extensions: [".dmg", ".zip", ".pkg"],
             icon: "arrow.down.circle",
             patterns: ["*.dmg", "*.zip", "*.pkg"],
-            isEnabled: false
+            isEnabled: false,
+            destination: .typeFolder
         ),
         FileType(
             name: "Documents",
             extensions: [".doc", ".docx", ".txt", ".rtf"],
             icon: "doc.text",
             patterns: ["*.doc", "*.docx", "*.txt", "*.rtf"],
-            isEnabled: false
+            isEnabled: false,
+            destination: .typeFolder
         )
     ]
     
     @Published var sourceFolder: URL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
     @Published var destinationFolder: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("Archive")
     @Published var schedule: Schedule = .manual
+    @Published var organizationMode: OrganizationMode = .quickArchive
     @Published var lastRun: Date?
     
     init() {
@@ -95,13 +117,6 @@ class VacManager: ObservableObject {
     }
     
     func vacuum() async {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let todayFolder = destinationFolder.appendingPathComponent(dateFormatter.string(from: Date()))
-        
-        // Create today's folder
-        try? FileManager.default.createDirectory(at: todayFolder, withIntermediateDirectories: true)
-        
         var movedCount = 0
         
         // Process each enabled file type
@@ -110,7 +125,12 @@ class VacManager: ObservableObject {
             
             for file in files {
                 let fileName = file.lastPathComponent
-                var destination = todayFolder.appendingPathComponent(fileName)
+                let destinationFolder = getDestinationFolder(for: fileType)
+                
+                // Create destination folder if it doesn't exist
+                try? FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
+                
+                var destination = destinationFolder.appendingPathComponent(fileName)
                 
                 // If file already exists in destination, add a number suffix
                 if FileManager.default.fileExists(atPath: destination.path) {
@@ -120,7 +140,7 @@ class VacManager: ObservableObject {
                     
                     repeat {
                         let newName = "\(nameWithoutExtension) \(counter).\(fileExtension)"
-                        destination = todayFolder.appendingPathComponent(newName)
+                        destination = destinationFolder.appendingPathComponent(newName)
                         counter += 1
                     } while FileManager.default.fileExists(atPath: destination.path)
                 }
@@ -140,6 +160,47 @@ class VacManager: ObservableObject {
         
         // Show notification
         showNotification(filesVacuumed: movedCount)
+    }
+    
+    private func getDestinationFolder(for fileType: FileType) -> URL {
+        switch organizationMode {
+        case .quickArchive:
+            // Everything goes to daily folders (current behavior)
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd"
+            return destinationFolder.appendingPathComponent(dateFormatter.string(from: Date()))
+            
+        case .sortByType:
+            // Everything goes to type folders
+            return destinationFolder.appendingPathComponent(fileType.name)
+            
+        case .smartClean:
+            // Use per-file-type destination settings
+            switch fileType.destination {
+            case .daily:
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy-MM-dd"
+                return destinationFolder.appendingPathComponent(dateFormatter.string(from: Date()))
+                
+            case .weekly:
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy-'W'ww"
+                return destinationFolder.appendingPathComponent(dateFormatter.string(from: Date()))
+                
+            case .monthly:
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy-MM"
+                return destinationFolder.appendingPathComponent(dateFormatter.string(from: Date()))
+                
+            case .typeFolder:
+                return destinationFolder.appendingPathComponent(fileType.name)
+                
+            case .skip:
+                // This case shouldn't happen since we filter enabled file types
+                // But return a safe default
+                return destinationFolder.appendingPathComponent(fileType.name)
+            }
+        }
     }
     
     private func findFiles(ofType fileType: FileType) -> [URL] {
@@ -210,6 +271,11 @@ class VacManager: ObservableObject {
             self.schedule = schedule
         }
         
+        if let savedOrgMode = UserDefaults.standard.string(forKey: "organizationMode"),
+           let orgMode = OrganizationMode(rawValue: savedOrgMode) {
+            self.organizationMode = orgMode
+        }
+        
         if let sourceURL = UserDefaults.standard.url(forKey: "sourceFolder") {
             self.sourceFolder = sourceURL
         }
@@ -224,23 +290,33 @@ class VacManager: ObservableObject {
         
         // Load file type preferences
         for fileType in fileTypes {
-            let key = "fileType_\(fileType.name)"
-            if UserDefaults.standard.object(forKey: key) != nil {
-                fileType.isEnabled = UserDefaults.standard.bool(forKey: key)
+            let enabledKey = "fileType_\(fileType.name)"
+            if UserDefaults.standard.object(forKey: enabledKey) != nil {
+                fileType.isEnabled = UserDefaults.standard.bool(forKey: enabledKey)
+            }
+            
+            let destinationKey = "fileTypeDestination_\(fileType.name)"
+            if let savedDestination = UserDefaults.standard.string(forKey: destinationKey),
+               let destination = FileDestination(rawValue: savedDestination) {
+                fileType.destination = destination
             }
         }
     }
     
     private func savePreferences() {
         UserDefaults.standard.set(schedule.rawValue, forKey: "schedule")
+        UserDefaults.standard.set(organizationMode.rawValue, forKey: "organizationMode")
         UserDefaults.standard.set(sourceFolder, forKey: "sourceFolder")
         UserDefaults.standard.set(destinationFolder, forKey: "destinationFolder")
         UserDefaults.standard.set(lastRun, forKey: "lastRun")
         
         // Save file type preferences
         for fileType in fileTypes {
-            let key = "fileType_\(fileType.name)"
-            UserDefaults.standard.set(fileType.isEnabled, forKey: key)
+            let enabledKey = "fileType_\(fileType.name)"
+            UserDefaults.standard.set(fileType.isEnabled, forKey: enabledKey)
+            
+            let destinationKey = "fileTypeDestination_\(fileType.name)"
+            UserDefaults.standard.set(fileType.destination.rawValue, forKey: destinationKey)
         }
     }
 }
