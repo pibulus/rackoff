@@ -1,5 +1,65 @@
 import SwiftUI
 
+struct AboutView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            // RackOff branding
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color(red: 1.0, green: 0.6, blue: 0.2), 
+                                    Color(red: 1.0, green: 0.4, blue: 0.6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                Text("RackOff")
+                    .font(.system(size: 22, weight: .heavy, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color(red: 1.0, green: 0.5, blue: 0.3), 
+                                    Color(red: 1.0, green: 0.3, blue: 0.5)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+            }
+            .padding(.bottom, 4)
+            
+            Text("Your desktop's chaos nemesis")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+                .italic()
+            
+            Text("Because life's too short for messy desktops.")
+                .font(.system(size: 13))
+                .multilineTextAlignment(.center)
+                .foregroundColor(.primary)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            
+            Spacer()
+            
+            VStack(spacing: 2) {
+                Text("Made by Pablo in Bangkok")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary.opacity(0.8))
+                
+                Text("Version 1.0")
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary.opacity(0.6))
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 32)
+        .frame(width: 300, height: 220)
+    }
+}
+
 enum MenuIconStyle: String, CaseIterable {
     case sparkles = "sparkles"
     case circle = "circle" 
@@ -28,6 +88,7 @@ struct RackOffApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem!
     var popover = NSPopover()
+    var aboutPopover = NSPopover()
     var currentIconStyle: MenuIconStyle = .sparkles
     var isPressed: Bool = false
     
@@ -48,11 +109,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             statusButton.target = self
         }
         
-        // Setup popover
+        // Setup main popover
         let contentView = ContentView()
-        popover.contentSize = NSSize(width: 340, height: 610)
+        popover.contentSize = NSSize(width: 340, height: 630)
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(rootView: contentView)
+        
+        // Setup about popover
+        let aboutView = AboutView()
+        aboutPopover.contentSize = NSSize(width: 300, height: 220)
+        aboutPopover.behavior = .transient
+        aboutPopover.contentViewController = NSHostingController(rootView: aboutView)
     }
     
     @objc func handleClick() {
@@ -127,18 +194,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc func showAbout() {
-        let alert = NSAlert()
-        alert.messageText = "✨ RackOff"
-        alert.informativeText = """
-        A minimal macOS menu bar app that racks off desktop clutter into organized daily archives.
-        
-        Part of the SoftStack suite - $1 apps that do one thing perfectly.
-        
-        Version 1.0
-        """
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Nice!")
-        alert.runModal()
+        if let button = statusItem.button {
+            if aboutPopover.isShown {
+                aboutPopover.performClose(nil)
+            } else {
+                popover.performClose(nil) // Close main popover if open
+                aboutPopover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            }
+        }
     }
     
     @objc func quitApp() {
@@ -173,31 +236,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func drawSparkles(context: CGContext, size: NSSize) {
-        // Main star (center) - orange
+        let color = darkenIfPressed(NSColor.controlAccentColor)
+        
+        // Main star (center)
         drawCGStar(context: context, 
                   center: CGPoint(x: size.width * 0.5, y: size.height * 0.5),
                   size: size.width * 0.4,
-                  color: darkenIfPressed(NSColor.systemOrange).cgColor)
+                  color: color.cgColor)
         
-        // Small stars - pink and yellow
+        // Small stars around it
         drawCGStar(context: context,
                   center: CGPoint(x: size.width * 0.2, y: size.height * 0.7),
                   size: size.width * 0.15,
-                  color: darkenIfPressed(NSColor.systemPink).cgColor)
+                  color: color.cgColor)
         
         drawCGStar(context: context,
                   center: CGPoint(x: size.width * 0.8, y: size.height * 0.2),
                   size: size.width * 0.12,
-                  color: darkenIfPressed(NSColor.systemYellow).cgColor)
+                  color: color.cgColor)
         
         drawCGStar(context: context,
                   center: CGPoint(x: size.width * 0.75, y: size.height * 0.75),
                   size: size.width * 0.13,
-                  color: darkenIfPressed(NSColor.systemPink).cgColor)
+                  color: color.cgColor)
     }
     
     private func drawCircle(context: CGContext, size: NSSize) {
-        let color = darkenIfPressed(NSColor.systemBlue)
+        let color = darkenIfPressed(NSColor.controlAccentColor)
         context.setFillColor(color.cgColor)
         
         let radius = size.width * 0.3

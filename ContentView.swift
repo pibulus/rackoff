@@ -157,8 +157,8 @@ struct ContentView: View {
         }
         .padding(.horizontal, 24)
         .padding(.top, 80)
-        .padding(.bottom, 28)
-        .frame(width: 340, height: 610)
+        .padding(.bottom, 48)
+        .frame(width: 340, height: 630)
     }
     
     func performVacuum() {
