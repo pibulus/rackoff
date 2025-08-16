@@ -20,6 +20,9 @@ cp -r RackOff.app /Applications/
 
 # Clean build artifacts
 rm -rf RackOff.app
+
+# Debug compilation issues
+swiftc -version  # Check Swift compiler version
 ```
 
 ## 🏗 Architecture & Key Components
@@ -76,10 +79,21 @@ Clean Now → VacManager.vacuum() → FileManager operations → Notification
 - **Notification system**: Uses deprecated NSUserNotification (consider updating to UNUserNotificationCenter)
 - **File patterns**: Special handling for screenshots vs general extensions
 - **Schedule options**: Manual, On Launch, Daily (though daily scheduling not fully implemented)
+- **Menu bar interaction**: Left-click shows popover, right-click shows context menu with About/Quit
+- **Popover behavior**: Transient (auto-closes when clicking outside)
 
-## ⚠️ Known Limitations
+## ⚠️ Known Limitations & Migration Notes
 
-- Daily scheduling mentioned in UI but not implemented with actual timer/scheduler
-- NSUserNotification is deprecated (works but should migrate to modern API)
-- Only targets ARM64 (no Intel support in current build config)
-- No app icon defined beyond system symbol
+- **Daily scheduling mentioned in UI but not implemented** with actual timer/scheduler
+- **NSUserNotification is deprecated** (works but should migrate to UNUserNotificationCenter)
+- **Only targets ARM64** (no Intel support in current build config)
+- **No app icon defined** beyond system symbol
+- **Legacy artifacts**: DeskVac.app directory exists from previous branding (can be removed)
+- **README out of sync**: Still references "DeskVac" instead of "RackOff"
+
+## 🚨 Important Rebrand Context
+
+This app was recently rebranded from "DeskVac" to "RackOff". While the Swift code has been updated, some artifacts remain:
+- Old DeskVac.app build in the directory
+- README.md still uses DeskVac branding and references
+- Build script and code are fully updated to RackOff

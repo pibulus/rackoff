@@ -1,11 +1,11 @@
-# 🧹 DeskVac
+# ✨ RackOff
 
-A minimal macOS menu bar app that vacuums up desktop clutter into organized daily archives.
+A minimal macOS menu bar app that racks off desktop clutter into organized daily archives.
 
 ## Features
 
 - **📦 Smart File Organization** - Archive files by type into dated folders
-- **🎯 Modular Selection** - Choose what to vacuum: Screenshots, PDFs, Images, Downloads, Documents
+- **🎯 Modular Selection** - Choose what to rack off: Screenshots, PDFs, Images, Downloads, Documents
 - **📁 Custom Locations** - Pick source and destination folders
 - **⏰ Flexible Scheduling** - Manual, on launch, or daily operation
 - **🎨 Clean UI** - Simple menu bar app with SwiftUI interface
@@ -19,17 +19,17 @@ A minimal macOS menu bar app that vacuums up desktop clutter into organized dail
 ## Installing
 
 ```bash
-cp -r DeskVac.app /Applications/
+cp -r RackOff.app /Applications/
 ```
 
 ## Usage
 
-1. Click the archive box icon in your menu bar
-2. Toggle which file types to vacuum
+1. Click the sparkles icon in your menu bar
+2. Toggle which file types to rack off
 3. Select source folder (default: Desktop)
 4. Select destination folder (default: Documents/Archive)
 5. Choose schedule (Manual/On Launch/Daily)
-6. Click "Vacuum Now" to clean up
+6. Click "Clean Now" to clean up
 
 Files are organized into `Archive/YYYY-MM-DD/` folders.
 
@@ -43,7 +43,7 @@ Files are organized into `Archive/YYYY-MM-DD/` folders.
 
 ## One Thing Done Well
 
-DeskVac does ONE thing: it vacuums your desktop mess into organized daily folders. That's it. That's the app.
+RackOff does ONE thing: it racks off your desktop mess into organized daily folders. That's it. That's the app.
 
 ---
 

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UserNotifications
 
 enum Schedule: String, CaseIterable {
     case manual = "Manual"
@@ -74,6 +75,9 @@ class VacManager: ObservableObject {
         
         // Create archive folder if needed
         try? FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
+        
+        // Request notification permissions
+        requestNotificationPermissions()
         
         // Check if should run on launch
         if schedule == .onLaunch {
@@ -170,15 +174,33 @@ class VacManager: ObservableObject {
         return results
     }
     
+    private func requestNotificationPermissions() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+            if let error = error {
+                print("Notification permission error: \(error)")
+            }
+        }
+    }
+    
     private func showNotification(filesVacuumed count: Int) {
-        let notification = NSUserNotification()
-        notification.title = "DeskVac Complete"
-        notification.informativeText = count > 0 
-            ? "Vacuumed \(count) file\(count == 1 ? "" : "s") to archive"
+        let content = UNMutableNotificationContent()
+        content.title = "RackOff Complete"
+        content.body = count > 0 
+            ? "Racked off \(count) file\(count == 1 ? "" : "s") to archive"
             : "Desktop already clean"
-        notification.soundName = NSUserNotificationDefaultSoundName
+        content.sound = .default
         
-        NSUserNotificationCenter.default.deliver(notification)
+        let request = UNNotificationRequest(
+            identifier: "vacuum-complete",
+            content: content,
+            trigger: nil // Show immediately
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Failed to show notification: \(error)")
+            }
+        }
     }
     
     private func loadPreferences() {
