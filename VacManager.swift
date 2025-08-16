@@ -53,34 +53,26 @@ class VacManager: ObservableObject {
             destination: .daily
         ),
         FileType(
-            name: "PDFs",
-            extensions: [".pdf"],
-            icon: "doc.fill",
-            patterns: ["*.pdf"],
-            isEnabled: false,
-            destination: .typeFolder
-        ),
-        FileType(
-            name: "Images",
-            extensions: [".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic"],
-            icon: "photo",
-            patterns: ["*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp", "*.heic"],
-            isEnabled: false,
-            destination: .typeFolder
-        ),
-        FileType(
-            name: "Downloads",
-            extensions: [".dmg", ".zip", ".pkg"],
-            icon: "arrow.down.circle",
-            patterns: ["*.dmg", "*.zip", "*.pkg"],
-            isEnabled: false,
-            destination: .typeFolder
-        ),
-        FileType(
             name: "Documents",
-            extensions: [".doc", ".docx", ".txt", ".rtf"],
+            extensions: [".pdf", ".doc", ".docx", ".txt", ".rtf", ".pages", ".numbers", ".key"],
             icon: "doc.text",
-            patterns: ["*.doc", "*.docx", "*.txt", "*.rtf"],
+            patterns: ["*.pdf", "*.doc", "*.docx", "*.txt", "*.rtf", "*.pages", "*.numbers", "*.key"],
+            isEnabled: false,
+            destination: .typeFolder
+        ),
+        FileType(
+            name: "Media",
+            extensions: [".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".mp4", ".mov", ".avi"],
+            icon: "photo",
+            patterns: ["*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp", "*.heic", "*.mp4", "*.mov", "*.avi"],
+            isEnabled: false,
+            destination: .typeFolder
+        ),
+        FileType(
+            name: "Archives",
+            extensions: [".zip", ".dmg", ".pkg", ".csv", ".json", ".xml", ".log"],
+            icon: "archivebox",
+            patterns: ["*.zip", "*.dmg", "*.pkg", "*.csv", "*.json", "*.xml", "*.log"],
             isEnabled: false,
             destination: .typeFolder
         )
@@ -91,6 +83,8 @@ class VacManager: ObservableObject {
     @Published var schedule: Schedule = .manual
     @Published var organizationMode: OrganizationMode = .quickArchive
     @Published var lastRun: Date?
+    
+    private var saveTimer: Timer?
     
     init() {
         loadPreferences()
@@ -112,7 +106,15 @@ class VacManager: ObservableObject {
     func toggleFileType(_ fileType: FileType, enabled: Bool) {
         if let index = fileTypes.firstIndex(where: { $0.id == fileType.id }) {
             fileTypes[index].isEnabled = enabled
-            savePreferences()
+            // Save preferences with debounce instead of immediately
+            debouncedSave()
+        }
+    }
+    
+    func updateFileTypeDestination(_ fileType: FileType, destination: FileDestination) {
+        if let index = fileTypes.firstIndex(where: { $0.id == fileType.id }) {
+            fileTypes[index].destination = destination
+            debouncedSave()
         }
     }
     
@@ -215,14 +217,22 @@ class VacManager: ObservableObject {
                 
                 // Check if it matches any pattern
                 if fileType.name == "Screenshots" {
-                    // Special handling for screenshots
+                    // Special handling for screenshots - filename patterns
                     if filename.contains("screenshot") || filename.contains("screen shot") {
                         if fileType.extensions.contains(where: { filename.hasSuffix($0) }) {
                             results.append(item)
                         }
                     }
+                } else if fileType.name == "Media" {
+                    // Media files - exclude screenshots from general image matching
+                    if fileType.extensions.contains(where: { filename.hasSuffix($0) }) {
+                        // Make sure it's not a screenshot
+                        if !(filename.contains("screenshot") || filename.contains("screen shot")) {
+                            results.append(item)
+                        }
+                    }
                 } else {
-                    // General file type matching
+                    // General file type matching for Documents and Archives
                     if fileType.extensions.contains(where: { filename.hasSuffix($0) }) {
                         results.append(item)
                     }
@@ -317,6 +327,18 @@ class VacManager: ObservableObject {
             
             let destinationKey = "fileTypeDestination_\(fileType.name)"
             UserDefaults.standard.set(fileType.destination.rawValue, forKey: destinationKey)
+        }
+    }
+    
+    private func debouncedSave() {
+        // Cancel existing timer
+        saveTimer?.invalidate()
+        
+        // Start new timer - save after 500ms of inactivity
+        saveTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
+            Task { @MainActor in
+                self.savePreferences()
+            }
         }
     }
 }

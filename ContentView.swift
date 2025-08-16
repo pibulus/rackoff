@@ -207,10 +207,9 @@ struct FileTypeRow: View {
     var accentColor: Color {
         switch fileType.name {
         case "Screenshots": return Color(red: 1.0, green: 0.5, blue: 0.3)
-        case "PDFs": return Color(red: 0.4, green: 0.6, blue: 0.9)
-        case "Images": return Color(red: 0.3, green: 0.8, blue: 0.5)
-        case "Downloads": return Color(red: 0.8, green: 0.4, blue: 0.8)
-        case "Documents": return Color(red: 0.6, green: 0.5, blue: 0.9)
+        case "Documents": return Color(red: 0.4, green: 0.6, blue: 0.9)
+        case "Media": return Color(red: 0.3, green: 0.8, blue: 0.5)
+        case "Archives": return Color(red: 0.8, green: 0.4, blue: 0.8)
         default: return Color.accentColor
         }
     }
@@ -292,6 +291,30 @@ struct FileTypeRow: View {
         .onTapGesture {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 vacManager.toggleFileType(fileType, enabled: !fileType.isEnabled)
+            }
+        }
+        .contextMenu {
+            if organizationMode == .smartClean {
+                Section("Send \(fileType.name) to:") {
+                    Button("Daily folders") {
+                        vacManager.updateFileTypeDestination(fileType, destination: .daily)
+                    }
+                    Button("Weekly folders") {
+                        vacManager.updateFileTypeDestination(fileType, destination: .weekly)
+                    }
+                    Button("Monthly folders") {
+                        vacManager.updateFileTypeDestination(fileType, destination: .monthly)
+                    }
+                    Button("\(fileType.name) folder") {
+                        vacManager.updateFileTypeDestination(fileType, destination: .typeFolder)
+                    }
+                }
+                
+                Section {
+                    Button("Skip this type") {
+                        vacManager.updateFileTypeDestination(fileType, destination: .skip)
+                    }
+                }
             }
         }
     }

@@ -3,7 +3,8 @@
     "allow": [
       "Bash(pkill:*)",
       "Bash(rolldice:*)",
-      "Bash(bash:*)"
+      "Bash(bash:*)",
+      "Bash(git add:*)"
     ],
     "additionalDirectories": [
       "/Users/pabloalvarado/Desktop"
