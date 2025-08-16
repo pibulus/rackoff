@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(pkill:*)",
-      "Bash(rolldice:*)"
+      "Bash(rolldice:*)",
+      "Bash(bash:*)"
     ],
     "additionalDirectories": [
       "/Users/pabloalvarado/Desktop"
