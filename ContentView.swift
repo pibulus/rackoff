@@ -59,20 +59,14 @@ struct ContentView: View {
             
             Spacer(minLength: 10)
             
-            // Organization Mode selector
-            VStack(spacing: 8) {
-                Text("Organization")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
-                
-                Picker("", selection: $vacManager.organizationMode) {
-                    Text("Quick Archive").tag(OrganizationMode.quickArchive)
-                    Text("Sort by Type").tag(OrganizationMode.sortByType) 
-                    Text("Smart Clean").tag(OrganizationMode.smartClean)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+            // Organization mode picker - minimal and dark
+            Picker("", selection: $vacManager.organizationMode) {
+                Text("Quick Archive").tag(OrganizationMode.quickArchive)
+                Text("Sort by Type").tag(OrganizationMode.sortByType) 
+                Text("Smart Clean").tag(OrganizationMode.smartClean)
             }
+            .pickerStyle(.segmented)
+            .labelsHidden()
             
             // THE LUSH CLEAN NOW BUTTON
             Button(action: performVacuum) {
