@@ -4,7 +4,8 @@
       "Bash(pkill:*)",
       "Bash(rolldice:*)",
       "Bash(bash:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(./build.sh:*)"
     ],
     "additionalDirectories": [
       "/Users/pabloalvarado/Desktop"

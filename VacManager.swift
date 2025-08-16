@@ -27,7 +27,7 @@ class FileType: Identifiable, ObservableObject {
     let name: String
     let extensions: [String]
     let icon: String
-    let patterns: [String]
+    let patterns: [String] // Legacy field - could be removed in future cleanup
     @Published var isEnabled: Bool
     @Published var destination: FileDestination
     
@@ -156,11 +156,9 @@ class VacManager: ObservableObject {
             }
         }
         
-        // Update last run
+        // Update last run and show notification
         lastRun = Date()
         savePreferences()
-        
-        // Show notification
         showNotification(filesVacuumed: movedCount)
     }
     

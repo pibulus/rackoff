@@ -5,12 +5,11 @@ struct ContentView: View {
     @State private var isVacuuming = false
     @State private var hoveredRow: UUID? = nil
     @State private var buttonHovered = false
-    @State private var vacuumProgress = 0.0
     @State private var showSuccess = false
     
     var body: some View {
         VStack(spacing: 20) {
-            // RackOff branding - bring it back!
+            // RackOff branding
             VStack(spacing: 6) {
                 HStack(spacing: 8) {
                     Image(systemName: "sparkles")
@@ -39,7 +38,7 @@ struct ContentView: View {
                     .foregroundColor(.secondary)
             }
             
-            // File types with more color
+            // File type toggles
             VStack(spacing: 8) {
                 ForEach(vacManager.fileTypes) { fileType in
                     FileTypeRow(
@@ -59,7 +58,7 @@ struct ContentView: View {
             
             Spacer(minLength: 10)
             
-            // Organization mode picker - minimal and dark
+            // Organization mode picker
             Picker("", selection: $vacManager.organizationMode) {
                 Text("Quick Archive").tag(OrganizationMode.quickArchive)
                 Text("Sort by Type").tag(OrganizationMode.sortByType) 
@@ -68,7 +67,7 @@ struct ContentView: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             
-            // THE LUSH CLEAN NOW BUTTON
+            // Clean Now button
             Button(action: performVacuum) {
                 ZStack {
                     // Glow effect when hovering
