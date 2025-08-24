@@ -79,7 +79,7 @@ struct PreferencesView: View {
                     HStack {
                         Image(systemName: "arrow.uturn.backward.circle.fill")
                             .font(.system(size: 14))
-                            .foregroundStyle(RackOffColors.sunset)
+                            .foregroundStyle(Color(red: 1.0, green: 0.5, blue: 0.3))
                         
                         Text("Last clean moved files")
                             .font(.system(size: 12))
@@ -169,67 +169,52 @@ struct TabButton: View {
     }
 }
 
-// Cleaning preferences tab
+// Cleaning preferences tab - ultra minimal
 struct CleaningPreferences: View {
     @ObservedObject var vacManager: VacManager
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            // Organization mode
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Organization Style", systemImage: "square.grid.3x3")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(RackOffColors.sunset)
+        VStack(spacing: 32) {
+            // Organization mode - just the options, no header
+            VStack(spacing: 12) {
+                OrganizationModeRow(
+                    mode: .quickArchive,
+                    title: "Archive",
+                    description: "Everything goes to dated folders",
+                    vacManager: vacManager
+                )
                 
-                VStack(alignment: .leading, spacing: 10) {
-                    OrganizationModeRow(
-                        mode: .quickArchive,
-                        title: "Quick Archive",
-                        description: "Everything goes to dated folders. Simple.",
-                        vacManager: vacManager
-                    )
-                    
-                    OrganizationModeRow(
-                        mode: .sortByType,
-                        title: "Sort by Type",
-                        description: "Screenshots here, documents there. Organized.",
-                        vacManager: vacManager
-                    )
-                    
-                    OrganizationModeRow(
-                        mode: .smartClean,
-                        title: "Smart Clean",
-                        description: "You decide where each type goes. Full control.",
-                        vacManager: vacManager
-                    )
-                }
-                .padding(12)
-                .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(8)
+                OrganizationModeRow(
+                    mode: .sortByType,
+                    title: "Sort",
+                    description: "Screenshots, documents, organized",
+                    vacManager: vacManager
+                )
+                
+                OrganizationModeRow(
+                    mode: .smartClean,
+                    title: "Smart",
+                    description: "Full control over destinations",
+                    vacManager: vacManager
+                )
             }
             
-            // File types to clean
-            VStack(alignment: .leading, spacing: 12) {
-                Label("What to Clean", systemImage: "doc.on.doc")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(RackOffColors.sunset)
-                
-                Text("Choose which file types RackOff should handle")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                
-                LazyVStack(spacing: 8) {
-                    ForEach(vacManager.fileTypes) { fileType in
-                        FileTypePreferenceRow(
-                            fileType: fileType,
-                            vacManager: vacManager
-                        )
-                    }
+            // File types - minimal grid
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 16) {
+                ForEach(vacManager.fileTypes) { fileType in
+                    MinimalFileTypeCard(
+                        fileType: fileType,
+                        vacManager: vacManager
+                    )
                 }
             }
             
             Spacer()
         }
+        .padding(.top, 16)
     }
 }
 
@@ -273,7 +258,7 @@ struct SchedulePreferences: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Label("When to Clean", systemImage: "clock")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(RackOffColors.sunset)
+                        .foregroundStyle(Color(red: 1.0, green: 0.5, blue: 0.3))
                     
                     HStack(spacing: 16) {
                         Image(systemName: "sunrise.fill")
@@ -387,7 +372,7 @@ struct FoldersPreferences: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Label("Custom Destinations", systemImage: "arrow.triangle.branch")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(RackOffColors.sunset)
+                        .foregroundStyle(Color(red: 1.0, green: 0.5, blue: 0.3))
                     
                     Text("Set custom folders for each file type")
                         .font(.system(size: 11))
@@ -512,8 +497,31 @@ struct OrganizationModeRow: View {
     let title: String
     let description: String
     @ObservedObject var vacManager: VacManager
+    @State private var isHovered = false
     
     var isSelected: Bool { vacManager.organizationMode == mode }
+    
+    private var modeIcon: String {
+        switch mode {
+        case .quickArchive: return "archivebox"
+        case .sortByType: return "folder.badge.gearshape"
+        case .smartClean: return "slider.horizontal.3"
+        }
+    }
+    
+    private var backgroundFill: Color {
+        if isSelected {
+            return Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.08)
+        } else if isHovered {
+            return Color(NSColor.controlBackgroundColor).opacity(0.6)
+        } else {
+            return Color.clear
+        }
+    }
+    
+    private var borderStroke: Color {
+        isSelected ? Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.4) : Color.clear
+    }
     
     var body: some View {
         Button(action: {
@@ -521,63 +529,76 @@ struct OrganizationModeRow: View {
                 vacManager.organizationMode = mode
             }
         }) {
-            HStack(spacing: 12) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 18))
-                    .foregroundStyle(isSelected ? RackOffColors.sunset : 
-                                   LinearGradient(colors: [Color.secondary], startPoint: .leading, endPoint: .trailing))
+            HStack(spacing: 20) {
+                // Icon circle
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.15) : Color.clear)
+                        .frame(width: 48, height: 48)
+                    
+                    Image(systemName: modeIcon)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(isSelected ? Color(red: 1.0, green: 0.5, blue: 0.3) : Color.secondary)
+                        .scaleEffect(isHovered ? 1.1 : 1.0)
+                }
                 
+                // Text content
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.primary)
-                    Text(description)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                    
+                    if isHovered || isSelected {
+                        Text(description)
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
                 Spacer()
+                
+                // Checkmark
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Color(red: 1.0, green: 0.5, blue: 0.3))
+                }
             }
-            .padding(10)
-            .background(isSelected ? Color(NSColor.controlAccentColor).opacity(0.1) : Color.clear)
-            .cornerRadius(6)
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(isSelected ? Color(NSColor.controlAccentColor).opacity(0.3) : Color.clear, lineWidth: 1)
-            )
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(RoundedRectangle(cornerRadius: 16).fill(backgroundFill))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(borderStroke, lineWidth: 1.5))
+            .scaleEffect(isHovered ? 1.01 : 1.0)
         }
         .buttonStyle(PlainButtonStyle())
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isHovered = hovering
+            }
+        }
     }
 }
 
-struct FileTypePreferenceRow: View {
+struct SimpleFileTypeRow: View {
     let fileType: FileType
     @ObservedObject var vacManager: VacManager
     
-    var accentColor: Color {
-        switch fileType.name {
-        case "Screenshots": return Color(red: 1.0, green: 0.5, blue: 0.3)
-        case "Documents": return Color(red: 0.4, green: 0.6, blue: 0.9)
-        case "Media": return Color(red: 0.3, green: 0.8, blue: 0.5)
-        case "Archives": return Color(red: 0.8, green: 0.4, blue: 0.8)
-        default: return Color.accentColor
-        }
-    }
-    
     var body: some View {
-        HStack {
+        HStack(spacing: 16) {
             Image(systemName: fileType.icon)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(fileType.isEnabled ? accentColor : .secondary)
-                .frame(width: 24)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(RackOffColors.sunset)
+                .frame(width: 28)
             
-            Text(fileType.name)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(fileType.isEnabled ? .primary : .secondary)
-            
-            Text("(\(fileType.extensions.joined(separator: ", ")))")
-                .font(.system(size: 11))
-                .foregroundColor(Color.secondary.opacity(0.5))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(fileType.name)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.primary)
+                
+                Text(fileType.extensions.prefix(3).joined(separator: ", ") + (fileType.extensions.count > 3 ? "..." : ""))
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
             
             Spacer()
             
@@ -585,16 +606,97 @@ struct FileTypePreferenceRow: View {
                 get: { fileType.isEnabled },
                 set: { vacManager.toggleFileType(fileType, enabled: $0) }
             ))
-            .toggleStyle(SwitchToggleStyle(tint: accentColor))
+            .toggleStyle(SwitchToggleStyle(tint: Color(red: 1.0, green: 0.5, blue: 0.3)))
             .labelsHidden()
-            .scaleEffect(0.8)
         }
         .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-        .cornerRadius(6)
+        .padding(.horizontal, 4)
     }
 }
+
+struct MinimalFileTypeCard: View {
+    let fileType: FileType
+    @ObservedObject var vacManager: VacManager
+    @State private var isHovered = false
+    
+    private var iconBackgroundFill: Color {
+        fileType.isEnabled ? Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.12) : Color.secondary.opacity(0.08)
+    }
+    
+    private var iconColor: Color {
+        fileType.isEnabled ? Color(red: 1.0, green: 0.5, blue: 0.3) : Color.secondary
+    }
+    
+    private var cardBackgroundFill: Color {
+        if fileType.isEnabled {
+            return Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.05)
+        } else if isHovered {
+            return Color(NSColor.controlBackgroundColor).opacity(0.4)
+        } else {
+            return Color.clear
+        }
+    }
+    
+    private var cardStroke: Color {
+        fileType.isEnabled ? Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.25) : Color.clear
+    }
+    
+    private var statusColor: Color {
+        fileType.isEnabled ? Color(red: 1.0, green: 0.5, blue: 0.3) : Color.secondary.opacity(0.3)
+    }
+    
+    var body: some View {
+        Button(action: {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                vacManager.toggleFileType(fileType, enabled: !fileType.isEnabled)
+            }
+        }) {
+            VStack(spacing: 12) {
+                // Icon with background
+                ZStack {
+                    Circle()
+                        .fill(iconBackgroundFill)
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: fileType.icon)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(iconColor)
+                        .scaleEffect(isHovered ? 1.1 : 1.0)
+                }
+                
+                VStack(spacing: 4) {
+                    Text(fileType.name)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    if isHovered {
+                        Text(fileType.extensions.prefix(2).joined(separator: ", ") + (fileType.extensions.count > 2 ? "..." : ""))
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                // Status dot
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 6, height: 6)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .padding(.horizontal, 12)
+            .background(RoundedRectangle(cornerRadius: 12).fill(cardBackgroundFill))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(cardStroke, lineWidth: 1))
+            .scaleEffect(isHovered ? 1.02 : 1.0)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
 
 struct CustomDestinationRow: View {
     let fileType: FileType

@@ -29,50 +29,60 @@ struct ContentView: View {
     // Use consistent brand colors
     
     var body: some View {
-        VStack(spacing: 20) {
-            // RackOff branding with settings gear
-            ZStack {
-                VStack(spacing: 6) {
+        VStack(spacing: 28) {
+            // Header with settings and exit buttons
+            HStack {
+                Button(action: {
+                    NotificationCenter.default.post(name: Notification.Name("ShowPreferences"), object: nil)
+                }) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(gearHovered ? Color(red: 1.0, green: 0.5, blue: 0.3) : Color.secondary)
+                        .scaleEffect(gearHovered ? 1.1 : 1.0)
+                        .rotationEffect(.degrees(gearHovered ? 15 : 0))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .onHover { hovering in
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        gearHovered = hovering
+                    }
+                }
+                .help("Preferences")
+                
+                Spacer()
+                
+                // RackOff branding - centered
+                VStack(spacing: 4) {
                     HStack(spacing: 8) {
                         Image(systemName: "sparkles")
                             .font(.system(size: 20, weight: .medium))
                             .foregroundStyle(RackOffColors.sunset)
                         Text("RackOff")
-                            .font(.system(size: 32, weight: .heavy, design: .rounded))
+                            .font(.system(size: 28, weight: .heavy, design: .rounded))
                             .foregroundStyle(RackOffColors.sunset)
                     }
                     Text("Desktop cleaning that gets it")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
                 }
                 
-                // Settings gear in top right
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        // Post notification to open preferences
-                        NotificationCenter.default.post(name: Notification.Name("ShowPreferences"), object: nil)
-                    }) {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(RackOffColors.sunset)
-                            .opacity(gearHovered ? 1.0 : 0.6)
-                            .scaleEffect(gearHovered ? 1.15 : 1.0)
-                            .rotationEffect(.degrees(gearHovered ? 15 : 0))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .onHover { hovering in
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                            gearHovered = hovering
-                        }
-                    }
-                    .help("Preferences")
+                Spacer()
+                
+                Button(action: {
+                    NSApplication.shared.terminate(nil)
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .opacity(0.7)
                 }
-                .offset(y: -20)
+                .buttonStyle(PlainButtonStyle())
+                .help("Quit RackOff")
             }
+            .padding(.horizontal, 4)
             
-            // File type toggles
-            LazyVStack(spacing: 8) {
+            // File type toggles with more space
+            LazyVStack(spacing: 6) {
                 ForEach(vacManager.fileTypes) { fileType in
                     FileTypeRow(
                         fileType: fileType,
@@ -87,12 +97,12 @@ struct ContentView: View {
                     }
                 }
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, 12)
             
-            Spacer(minLength: 4)
+            Spacer(minLength: 16)
             
-            // Organization mode picker
-            HStack(spacing: 8) {
+            // Organization mode picker - cleaner
+            HStack(spacing: 6) {
                 OrganizationButton(
                     title: "Quick",
                     mode: .quickArchive,
@@ -111,9 +121,9 @@ struct ContentView: View {
                     vacManager: vacManager
                 )
             }
-            .padding(4)
-            .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
-            .cornerRadius(10)
+            .padding(6)
+            .background(Color(NSColor.controlBackgroundColor).opacity(0.4))
+            .cornerRadius(12)
             
             // Progress indicator for large operations
             if vacManager.isProcessing && vacManager.currentProgress.total > 0 {
@@ -217,8 +227,8 @@ struct ContentView: View {
             }
         }
         .padding(.horizontal, RackOffSpacing.popoverPadding)
-        .padding(.top, 80)
-        .padding(.bottom, RackOffSpacing.extraLarge + 8)
+        .padding(.top, 24)
+        .padding(.bottom, RackOffSpacing.extraLarge)
         .frame(width: RackOffSizes.popoverWidth, height: RackOffSizes.popoverHeight)
     }
     
@@ -391,12 +401,12 @@ struct FileTypeRow: View {
             .accessibilityLabel("Enable \(fileType.name) cleaning")
             .scaleEffect(0.85)
         }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .padding(.horizontal, 18)
         .background(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 10)
                 .fill(isHovered ? 
-                    Color(NSColor.controlBackgroundColor) : 
+                    Color(NSColor.controlBackgroundColor).opacity(0.8) : 
                     Color.clear
                 )
         )
