@@ -1,58 +1,63 @@
 # RackOff ✨
 
-Clean desktop. Clear mind. Done.
+Your desktop's chaos nemesis. Finally.
 
 ## What it does
 
-Racks off desktop clutter into dated archives.  
-Pick your style. Click once. Desktop's clean.
+You know that desktop situation? The one where screenshots multiply like rabbits and random PDFs just... appear?
 
-**Three ways to organize:**
-- Quick Archive → daily folders
-- Sort by Type → file-kind folders  
-- Smart Clean → custom destinations
+RackOff swoops in, sorts it all into tidy dated folders, then gets out of your way.  
+One click. Desktop's clean. You're back to work (or whatever).
+
+**Three ways to organize your chaos:**
+- Quick Archive → everything into daily folders
+- Sort by Type → files find their tribes  
+- Smart Clean → you decide what goes where
 
 ## Get it running
 
 ```bash
-# Build
+# Build it
 ./build.sh
 
-# Install
+# Install it  
 cp -r RackOff.app /Applications/
 
-# Run
+# Use it
 Click the sparkles in your menu bar
 ```
 
 ## How it works
 
-Toggle what to clean:
-- Screenshots that pile up
-- Documents that drift
-- Media that multiplies
-- Archives that accumulate
+Toggle what bugs you:
+- Screenshots that pile up during debugging sessions
+- Documents that drift in from who knows where
+- Media files having a party on your desktop
+- Archives that seemed important last Tuesday
 
-Pick when to clean:
-- Manual (you decide)
-- On launch (auto-start)
-- Daily at 9 AM (set and forget)
+Pick your cleaning vibe:
+- Manual (when the mood strikes)
+- On launch (fresh start every time)
+- Daily at 9 AM (set it and forget it exists)
 
-Files land in `~/Documents/Archive/[organized]`
+Everything lands safe in `~/Documents/Archive/[organized by date or type]`  
+Nothing's deleted. Just... relocated.
 
 ## The deal
 
-RackOff does one thing: desktop cleaning with attitude.
+RackOff does one thing: it cleans your desktop without making it weird.
 
-Want fancier organization modes? Right-click file types in Smart Clean.  
-Want different icons? Right-click the menu bar sparkles.  
-Want your desktop back? Check the Archive folder.
+Want to customize? Right-click file types in Smart Clean mode.  
+Bored of sparkles? Right-click the menu bar icon for options.  
+Miss that one file? It's chilling in the Archive folder.
 
-No accounts. No cloud. No judgment.  
-Just a clean desktop when you need it.
+No accounts to make. No cloud to feed. No AI watching.  
+Just a clean desktop when you need one.
+
+Built in Bangkok with plenty of coffee and mild frustration at my own desktop.
 
 ---
 
 Part of SoftStack.  
-Light touch. Real work.  
-$1 apps that respect your space.
+$1 apps that do one thing well and don't make it weird.  
+Light touch. Real work.
