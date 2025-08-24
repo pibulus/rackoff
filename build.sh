@@ -23,7 +23,7 @@ mkdir -p "$APP_NAME.app/Contents/MacOS"
 mkdir -p "$APP_NAME.app/Contents/Resources"
 
 # Compile Swift files with optimizations
-swiftc RackOffApp.swift ContentView.swift VacManager.swift \
+swiftc RackOffApp.swift ContentView.swift VacManager.swift PreferencesView.swift \
     -o "$APP_NAME.app/Contents/MacOS/$APP_NAME" \
     -target arm64-apple-macos12.0 \
     -framework SwiftUI \

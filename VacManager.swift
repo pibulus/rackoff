@@ -31,15 +31,23 @@ struct FileType: Identifiable, Codable {
     var isEnabled: Bool
     var destination: FileDestination
     var customDestination: URL?
+    var matcher: FileMatcher
     
-    init(name: String, extensions: [String], icon: String, isEnabled: Bool = false, destination: FileDestination = .daily, customDestination: URL? = nil) {
+    init(name: String, extensions: [String], icon: String, isEnabled: Bool = false, destination: FileDestination = .daily, customDestination: URL? = nil, matcher: FileMatcher = .byExtension) {
         self.name = name
         self.extensions = extensions
         self.icon = icon
         self.isEnabled = isEnabled
         self.destination = destination
         self.customDestination = customDestination
+        self.matcher = matcher
     }
+}
+
+enum FileMatcher: String, Codable {
+    case byExtension = "extension"
+    case byFilenamePattern = "pattern"
+    case byExtensionExcludingPattern = "extension_excluding"
 }
 
 struct UndoOperation {
@@ -56,28 +64,32 @@ class VacManager: ObservableObject {
             extensions: [".jpg", ".png", ".jpeg"],
             icon: "camera.viewfinder",
             isEnabled: true,
-            destination: .daily
+            destination: .daily,
+            matcher: .byFilenamePattern
         ),
         FileType(
             name: "Documents",
             extensions: [".pdf", ".doc", ".docx", ".txt", ".rtf", ".pages", ".numbers", ".key"],
             icon: "doc.text",
             isEnabled: false,
-            destination: .typeFolder
+            destination: .typeFolder,
+            matcher: .byExtension
         ),
         FileType(
             name: "Media",
             extensions: [".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".mp4", ".mov", ".avi"],
             icon: "photo",
             isEnabled: false,
-            destination: .typeFolder
+            destination: .typeFolder,
+            matcher: .byExtensionExcludingPattern
         ),
         FileType(
             name: "Archives",
             extensions: [".zip", ".dmg", ".pkg", ".csv", ".json", ".xml", ".log"],
             icon: "archivebox",
             isEnabled: false,
-            destination: .typeFolder
+            destination: .typeFolder,
+            matcher: .byExtension
         )
     ]
     
@@ -89,6 +101,8 @@ class VacManager: ObservableObject {
     @Published var canUndo: Bool = false
     @Published var isProcessing: Bool = false
     @Published var currentProgress: (current: Int, total: Int) = (0, 0)
+    @Published var dailyCleaningHour: Int = 9
+    @Published var dailyCleaningMinute: Int = 0
     
     private var lastOperation: [UndoOperation] = []
     private var saveTimer: Timer?
@@ -139,13 +153,13 @@ class VacManager: ObservableObject {
     private func scheduleDailyVacuum() {
         let calendar = Calendar.current
         var dateComponents = calendar.dateComponents([.year, .month, .day], from: Date())
-        dateComponents.hour = 9
-        dateComponents.minute = 0
+        dateComponents.hour = dailyCleaningHour
+        dateComponents.minute = dailyCleaningMinute
         dateComponents.second = 0
         
         guard let targetDate = calendar.date(from: dateComponents) else { return }
         
-        // If it's already past 9 AM today, schedule for tomorrow
+        // If it's already past the scheduled time today, schedule for tomorrow
         let now = Date()
         guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: targetDate) else { return }
         let scheduledDate = targetDate > now ? targetDate : tomorrow
@@ -167,6 +181,17 @@ class VacManager: ObservableObject {
         schedule = newSchedule
         setupScheduling()
         savePreferences()
+    }
+    
+    func updateDailyCleaningTime(hour: Int, minute: Int) {
+        dailyCleaningHour = hour
+        dailyCleaningMinute = minute
+        savePreferences()
+        
+        // Reschedule if currently using daily schedule
+        if schedule == .daily {
+            setupScheduling()
+        }
     }
     
     func toggleFileType(_ fileType: FileType, enabled: Bool) {
@@ -393,29 +418,8 @@ class VacManager: ObservableObject {
             let contents = try fileManager.contentsOfDirectory(at: sourceFolder, includingPropertiesForKeys: nil)
             
             for item in contents {
-                let filename = item.lastPathComponent.lowercased()
-                
-                // Check if it matches any pattern
-                if fileType.name == "Screenshots" {
-                    // Special handling for screenshots - filename patterns
-                    if filename.contains("screenshot") || filename.contains("screen shot") {
-                        if fileType.extensions.contains(where: { filename.hasSuffix($0) }) {
-                            results.append(item)
-                        }
-                    }
-                } else if fileType.name == "Media" {
-                    // Media files - exclude screenshots from general image matching
-                    if fileType.extensions.contains(where: { filename.hasSuffix($0) }) {
-                        // Make sure it's not a screenshot
-                        if !(filename.contains("screenshot") || filename.contains("screen shot")) {
-                            results.append(item)
-                        }
-                    }
-                } else {
-                    // General file type matching for Documents and Archives
-                    if fileType.extensions.contains(where: { filename.hasSuffix($0) }) {
-                        results.append(item)
-                    }
+                if matchesFileType(item, fileType: fileType) {
+                    results.append(item)
                 }
             }
         } catch {
@@ -423,6 +427,50 @@ class VacManager: ObservableObject {
         }
         
         return results
+    }
+    
+    private func matchesFileType(_ url: URL, fileType: FileType) -> Bool {
+        let filename = url.lastPathComponent.lowercased()
+        
+        switch fileType.matcher {
+        case .byExtension:
+            // Simple extension matching
+            return fileType.extensions.contains(where: { filename.hasSuffix($0) })
+            
+        case .byFilenamePattern:
+            // Match by filename pattern (e.g., screenshots)
+            let patterns = getPatterns(for: fileType)
+            let hasPattern = patterns.contains(where: { filename.contains($0) })
+            let hasExtension = fileType.extensions.contains(where: { filename.hasSuffix($0) })
+            return hasPattern && hasExtension
+            
+        case .byExtensionExcludingPattern:
+            // Match by extension but exclude certain patterns (e.g., media excluding screenshots)
+            let hasExtension = fileType.extensions.contains(where: { filename.hasSuffix($0) })
+            let excludePatterns = getExcludePatterns(for: fileType)
+            let hasExcludedPattern = excludePatterns.contains(where: { filename.contains($0) })
+            return hasExtension && !hasExcludedPattern
+        }
+    }
+    
+    private func getPatterns(for fileType: FileType) -> [String] {
+        // Define patterns for each file type that uses pattern matching
+        switch fileType.name {
+        case "Screenshots":
+            return ["screenshot", "screen shot", "screen recording", "screen capture"]
+        default:
+            return []
+        }
+    }
+    
+    private func getExcludePatterns(for fileType: FileType) -> [String] {
+        // Define patterns to exclude for each file type
+        switch fileType.name {
+        case "Media":
+            return ["screenshot", "screen shot", "screen recording", "screen capture"]
+        default:
+            return []
+        }
     }
     
     private func requestNotificationPermissions() {
@@ -513,6 +561,15 @@ class VacManager: ObservableObject {
             self.lastRun = lastRunDate
         }
         
+        // Load daily cleaning time preferences
+        if UserDefaults.standard.object(forKey: "dailyCleaningHour") != nil {
+            self.dailyCleaningHour = UserDefaults.standard.integer(forKey: "dailyCleaningHour")
+        }
+        
+        if UserDefaults.standard.object(forKey: "dailyCleaningMinute") != nil {
+            self.dailyCleaningMinute = UserDefaults.standard.integer(forKey: "dailyCleaningMinute")
+        }
+        
         // Load file type preferences
         for index in fileTypes.indices {
             let fileType = fileTypes[index]
@@ -545,6 +602,8 @@ class VacManager: ObservableObject {
         UserDefaults.standard.set(sourceFolder, forKey: "sourceFolder")
         UserDefaults.standard.set(destinationFolder, forKey: "destinationFolder")
         UserDefaults.standard.set(lastRun, forKey: "lastRun")
+        UserDefaults.standard.set(dailyCleaningHour, forKey: "dailyCleaningHour")
+        UserDefaults.standard.set(dailyCleaningMinute, forKey: "dailyCleaningMinute")
         
         // Save file type preferences
         for fileType in fileTypes {
