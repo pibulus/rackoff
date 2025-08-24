@@ -78,19 +78,10 @@ enum MenuIconStyle: String, CaseIterable {
 @main
 struct RackOffApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject private var vacManager = VacManager()
-    
-    init() {
-        // Setup needs to happen after init
-    }
     
     var body: some Scene {
         Settings {
             EmptyView()
-                .onAppear {
-                    // Pass the VacManager to AppDelegate when it appears
-                    appDelegate.setVacManager(vacManager)
-                }
         }
     }
 }
@@ -101,19 +92,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var popover = NSPopover()
     var aboutPopover = NSPopover()
     var preferencesWindow: NSWindow?
-    private var vacManager: VacManager?
+    var vacManager = VacManager() // Back to direct instantiation
     var currentIconStyle: MenuIconStyle = .sparkles
     var isPressed: Bool = false
     var contextMenu: NSMenu!
     var undoMenuItem: NSMenuItem!
-    
-    func setVacManager(_ manager: VacManager) {
-        self.vacManager = manager
-        // Update UI components that depend on VacManager
-        if popover.contentViewController == nil {
-            setupPopovers()
-        }
-    }
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Load icon style preference
@@ -132,15 +115,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             statusButton.target = self
         }
         
+        // Setup popovers
+        setupPopovers()
+        
         // Setup context menu once
         setupContextMenu()
     }
     
     private func setupPopovers() {
-        guard let manager = vacManager else { return }
-        
         // Setup main popover
-        let contentView = ContentView().environmentObject(manager)
+        let contentView = ContentView().environmentObject(vacManager)
         popover.contentSize = NSSize(width: 340, height: 630)
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(rootView: contentView)
@@ -173,7 +157,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Undo item (shown when available)
         undoMenuItem = NSMenuItem(title: "Undo Last Clean", action: #selector(undoLastClean), keyEquivalent: "z")
         undoMenuItem.target = self
-        undoMenuItem.isHidden = !(vacManager?.canUndo ?? false)
+        undoMenuItem.isHidden = !vacManager.canUndo
         contextMenu.addItem(undoMenuItem)
         
         contextMenu.addItem(NSMenuItem.separator())
@@ -212,7 +196,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func updateMenuCheckmarks() {
         // Update undo visibility
-        undoMenuItem.isHidden = !(vacManager?.canUndo ?? false)
+        undoMenuItem.isHidden = !vacManager.canUndo
         
         // Update icon style checkmarks
         if let styleMenuItem = contextMenu.item(withTitle: "Icon Style"),
@@ -266,18 +250,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc func undoLastClean() {
-        guard let manager = vacManager else { return }
         Task {
-            let result = await manager.undoLastClean()
+            let result = await vacManager.undoLastClean()
             print("Undo completed: \(result.restoredCount) files restored")
         }
     }
     
     @objc func showPreferences() {
-        guard let manager = vacManager else { return }
         if preferencesWindow == nil {
             // Create preferences window
-            let preferencesView = PreferencesView().environmentObject(manager)
+            let preferencesView = PreferencesView().environmentObject(vacManager)
             let hostingController = NSHostingController(rootView: preferencesView)
             
             let window = NSWindow(

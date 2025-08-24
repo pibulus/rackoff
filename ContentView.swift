@@ -8,6 +8,20 @@ struct ContentView: View {
     @State private var showSuccess = false
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var lastCleanResult: (files: Int, bytes: Int64) = (0, 0)
+    
+    var successMessage: String {
+        if lastCleanResult.files == 0 {
+            return "Already Clean!"
+        } else if lastCleanResult.bytes > 0 {
+            let formatter = ByteCountFormatter()
+            formatter.countStyle = .file
+            let sizeString = formatter.string(fromByteCount: lastCleanResult.bytes)
+            return "\(lastCleanResult.files) files • \(sizeString)"
+        } else {
+            return "\(lastCleanResult.files) files cleaned"
+        }
+    }
     
     // Cached gradients for performance
     static let titleGradient = LinearGradient(
@@ -118,7 +132,7 @@ struct ContentView: View {
                                 .rotationEffect(.degrees(buttonHovered ? -10 : 0))
                                 .animation(.spring(response: 0.3, dampingFraction: 0.6), value: buttonHovered)
                         }
-                        Text(isVacuuming ? "Cleaning..." : (showSuccess ? "All Clean!" : "Clean Now"))
+                        Text(isVacuuming ? "Cleaning..." : (showSuccess ? successMessage : "Clean Now"))
                             .font(.system(size: 17, weight: .bold))
                     }
                     .foregroundColor(.white)
@@ -217,13 +231,14 @@ struct ContentView: View {
             await MainActor.run {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     isVacuuming = false
+                    lastCleanResult = (result.movedCount, result.totalBytes)
                     
                     if !result.errors.isEmpty {
                         showError = true
                         errorMessage = result.errors.first ?? "Some files couldn't be moved"
                         showSuccess = false
                     } else {
-                        showSuccess = result.movedCount > 0
+                        showSuccess = true // Always show success state to display result
                         showError = false
                     }
                 }
@@ -297,25 +312,15 @@ struct FileTypeRow: View {
                 .scaleEffect(isHovered ? 1.1 : 1.0)
                 .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isHovered)
             
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(fileType.name)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(fileType.isEnabled ? .primary : .secondary)
                 
-                HStack(spacing: 8) {
-                    if fileType.isEnabled {
-                        Text(fileType.extensions.prefix(3).joined(separator: ", "))
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                            .opacity(0.7)
-                    }
-                    
-                    if let destinationText = destinationText, fileType.isEnabled {
-                        Text(destinationText)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(accentColor)
-                            .opacity(0.8)
-                    }
+                if let destinationText = destinationText, fileType.isEnabled {
+                    Text(destinationText)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(accentColor.opacity(0.8))
                 }
             }
             

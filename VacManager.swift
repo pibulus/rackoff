@@ -141,7 +141,7 @@ class VacManager: ObservableObject {
         case .onLaunch:
             // Run immediately on launch
             Task {
-                _ = await vacuum()
+                let _ = await vacuum()
             }
             
         case .daily:
@@ -170,7 +170,7 @@ class VacManager: ObservableObject {
         scheduleTimer = Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 guard let self = self else { return }
-                _ = await self.vacuum()
+                let _ = await self.vacuum()
                 // Reschedule for next day
                 self.scheduleDailyVacuum()
             }
@@ -279,11 +279,12 @@ class VacManager: ObservableObject {
         canUndo = false
     }
     
-    func vacuum() async -> (movedCount: Int, errors: [String]) {
+    func vacuum() async -> (movedCount: Int, totalBytes: Int64, errors: [String]) {
         isProcessing = true
         defer { isProcessing = false }
         
         var movedCount = 0
+        var totalBytes: Int64 = 0
         var errors: [String] = []
         var newUndoOperations: [UndoOperation] = []
         
@@ -335,8 +336,13 @@ class VacManager: ObservableObject {
                 }
                 
                 do {
+                    // Get file size before moving
+                    let fileAttributes = try FileManager.default.attributesOfItem(atPath: file.path)
+                    let fileSize = fileAttributes[.size] as? Int64 ?? 0
+                    
                     try FileManager.default.moveItem(at: file, to: destination)
                     movedCount += 1
+                    totalBytes += fileSize
                     
                     // Track for undo
                     newUndoOperations.append(UndoOperation(
@@ -362,7 +368,7 @@ class VacManager: ObservableObject {
         showNotification(filesVacuumed: movedCount, errors: errors)
         
         currentProgress = (0, 0)
-        return (movedCount, errors)
+        return (movedCount, totalBytes, errors)
     }
     
     private func getDestinationFolder(for fileType: FileType) -> URL {
