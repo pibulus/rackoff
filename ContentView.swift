@@ -56,7 +56,7 @@ struct ContentView: View {
             }
             
             // File type toggles
-            VStack(spacing: 8) {
+            LazyVStack(spacing: 8) {
                 ForEach(vacManager.fileTypes) { fileType in
                     FileTypeRow(
                         fileType: fileType,
@@ -160,6 +160,7 @@ struct ContentView: View {
             .buttonStyle(PlainButtonStyle())
             .disabled(isVacuuming)
             .scaleEffect(buttonHovered && !isVacuuming ? 1.05 : (isVacuuming ? 0.98 : 1.0))
+            .accessibilityLabel(isVacuuming ? "Cleaning in progress" : "Clean desktop now")
             .onHover { hovering in
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     buttonHovered = hovering
@@ -332,6 +333,7 @@ struct FileTypeRow: View {
             ))
             .toggleStyle(SwitchToggleStyle(tint: accentColor))
             .labelsHidden()
+            .accessibilityLabel("Enable \(fileType.name) cleaning")
             .scaleEffect(0.85)
         }
         .padding(.vertical, 12)

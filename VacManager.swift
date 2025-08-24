@@ -58,6 +58,7 @@ struct UndoOperation {
 
 @MainActor
 class VacManager: ObservableObject {
+    // MARK: - Published Properties
     @Published var fileTypes: [FileType] = [
         FileType(
             name: "Screenshots",
@@ -104,10 +105,13 @@ class VacManager: ObservableObject {
     @Published var dailyCleaningHour: Int = 9
     @Published var dailyCleaningMinute: Int = 0
     
+    // MARK: - Private Properties
     private var lastOperation: [UndoOperation] = []
     private var saveTimer: Timer?
     private weak var scheduleTimer: Timer?
+    private let fileAccessQueue = DispatchQueue(label: "com.pablo.rackoff.fileaccess")
     
+    // MARK: - Initialization
     init() {
         loadPreferences()
         
@@ -128,6 +132,8 @@ class VacManager: ObservableObject {
         scheduleTimer?.invalidate()
         scheduleTimer = nil
     }
+    
+    // MARK: - Public Methods
     
     private func setupScheduling() {
         // Cancel existing schedule timer
@@ -280,8 +286,14 @@ class VacManager: ObservableObject {
     }
     
     func vacuum() async -> (movedCount: Int, totalBytes: Int64, errors: [String]) {
-        isProcessing = true
-        defer { isProcessing = false }
+        await MainActor.run {
+            isProcessing = true
+        }
+        defer {
+            Task { @MainActor in
+                isProcessing = false
+            }
+        }
         
         var movedCount = 0
         var totalBytes: Int64 = 0
@@ -294,7 +306,9 @@ class VacManager: ObservableObject {
             totalFiles += findFiles(ofType: fileType).count
         }
         
-        currentProgress = (0, totalFiles)
+        await MainActor.run {
+            currentProgress = (0, totalFiles)
+        }
         
         // Process each enabled file type
         for fileType in fileTypes.filter({ $0.isEnabled }) {
@@ -302,7 +316,9 @@ class VacManager: ObservableObject {
             
             for file in files {
                 // Update progress
-                currentProgress.current += 1
+                await MainActor.run {
+                    currentProgress.current += 1
+                }
                 
                 // Allow UI to update for large operations
                 if currentProgress.current % 10 == 0 {
@@ -367,7 +383,9 @@ class VacManager: ObservableObject {
         savePreferences()
         showNotification(filesVacuumed: movedCount, errors: errors)
         
-        currentProgress = (0, 0)
+        await MainActor.run {
+            currentProgress = (0, 0)
+        }
         return (movedCount, totalBytes, errors)
     }
     
@@ -421,15 +439,21 @@ class VacManager: ObservableObject {
         let fileManager = FileManager.default
         
         do {
-            let contents = try fileManager.contentsOfDirectory(at: sourceFolder, includingPropertiesForKeys: nil)
+            let contents = try fileManager.contentsOfDirectory(at: sourceFolder, includingPropertiesForKeys: [.isRegularFileKey])
             
             for item in contents {
+                // Skip directories and hidden files
+                let resourceValues = try? item.resourceValues(forKeys: [.isRegularFileKey, .isHiddenKey])
+                guard let isRegularFile = resourceValues?.isRegularFile,
+                      let isHidden = resourceValues?.isHidden,
+                      isRegularFile && !isHidden else { continue }
+                
                 if matchesFileType(item, fileType: fileType) {
                     results.append(item)
                 }
             }
         } catch {
-            print("Error reading directory: \(error)")
+            print("Error reading directory \(sourceFolder.path): \(error.localizedDescription)")
         }
         
         return results
