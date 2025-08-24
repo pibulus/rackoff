@@ -1,14 +1,16 @@
 # ✨ RackOff
 
-A minimal macOS menu bar app that racks off desktop clutter into organized daily archives.
+A delightful macOS menu bar app that archives desktop clutter into organized folders with attitude. Your desktop's chaos nemesis.
 
 ## Features
 
-- **📦 Smart File Organization** - Archive files by type into dated folders
-- **🎯 Modular Selection** - Choose what to rack off: Screenshots, PDFs, Images, Downloads, Documents
-- **📁 Custom Locations** - Pick source and destination folders
-- **⏰ Flexible Scheduling** - Manual, on launch, or daily operation
-- **🎨 Clean UI** - Simple menu bar app with SwiftUI interface
+- **🎯 Three Organization Modes**: Quick Archive, Sort by Type, Smart Clean
+- **📦 Smart File Detection**: Screenshots, Documents, Media, Archives
+- **📅 Flexible Archiving**: Daily/weekly/monthly folders or type-based organization
+- **⏰ Scheduling Options**: Manual, on launch, or daily at 9 AM
+- **🎨 Playful UI**: Gradient animations, hover effects, and personality
+- **✨ Customizable Icons**: Choose your menu bar style
+- **🔐 App Store Ready**: Sandboxed, code-signed, and optimized
 
 ## Building
 

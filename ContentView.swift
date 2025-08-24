@@ -6,6 +6,23 @@ struct ContentView: View {
     @State private var hoveredRow: UUID? = nil
     @State private var buttonHovered = false
     @State private var showSuccess = false
+    @State private var showError = false
+    @State private var errorMessage = ""
+    
+    // Cached gradients for performance
+    static let titleGradient = LinearGradient(
+        colors: [Color(red: 1.0, green: 0.5, blue: 0.3), 
+                Color(red: 1.0, green: 0.3, blue: 0.5)],
+        startPoint: .leading,
+        endPoint: .trailing
+    )
+    
+    static let iconGradient = LinearGradient(
+        colors: [Color(red: 1.0, green: 0.6, blue: 0.2), 
+                Color(red: 1.0, green: 0.4, blue: 0.6)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
     
     var body: some View {
         VStack(spacing: 20) {
@@ -14,24 +31,10 @@ struct ContentView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 20, weight: .medium))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color(red: 1.0, green: 0.6, blue: 0.2), 
-                                        Color(red: 1.0, green: 0.4, blue: 0.6)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .foregroundStyle(Self.iconGradient)
                     Text("RackOff")
                         .font(.system(size: 32, weight: .heavy, design: .rounded))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color(red: 1.0, green: 0.5, blue: 0.3), 
-                                        Color(red: 1.0, green: 0.3, blue: 0.5)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .foregroundStyle(Self.titleGradient)
                 }
                 Text("Your desktop's best friend")
                     .font(.system(size: 12, weight: .medium))
@@ -134,6 +137,24 @@ struct ContentView: View {
                 }
             }
             
+            // Error message
+            if showError {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(.orange)
+                    Text(errorMessage)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(6)
+                .transition(.opacity.combined(with: .scale))
+            }
+            
             // Quit button
             Button(action: {
                 NSApplication.shared.terminate(nil)
@@ -154,7 +175,7 @@ struct ContentView: View {
                 .cornerRadius(8)
             }
             .buttonStyle(PlainButtonStyle())
-            .padding(.top, 12)
+            .padding(.top, showError ? 6 : 12)
         }
         .padding(.horizontal, 24)
         .padding(.top, 80)
@@ -166,13 +187,14 @@ struct ContentView: View {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
             isVacuuming = true
             showSuccess = false
+            showError = false
         }
         
         Task {
             // Add processing delay for UX feel
             try? await Task.sleep(nanoseconds: 800_000_000) // 0.8s
             
-            await vacManager.vacuum()
+            let result = await vacManager.vacuum()
             
             // Brief delay before showing success
             try? await Task.sleep(nanoseconds: 400_000_000) // 0.4s
@@ -180,16 +202,25 @@ struct ContentView: View {
             await MainActor.run {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     isVacuuming = false
-                    showSuccess = true
+                    
+                    if !result.errors.isEmpty {
+                        showError = true
+                        errorMessage = result.errors.first ?? "Some files couldn't be moved"
+                        showSuccess = false
+                    } else {
+                        showSuccess = result.movedCount > 0
+                        showError = false
+                    }
                 }
             }
             
-            // Reset success state after delay
-            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2s
+            // Reset states after delay
+            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3s
             
             await MainActor.run {
                 withAnimation(.easeOut(duration: 0.3)) {
                     showSuccess = false
+                    showError = false
                 }
             }
         }

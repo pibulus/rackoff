@@ -231,29 +231,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func createIconImage() -> NSImage {
         let size = NSSize(width: 18, height: 18)
-        let image = NSImage(size: size)
         
-        image.lockFocus()
-        
-        // Clear background
-        NSColor.clear.setFill()
-        NSRect(origin: .zero, size: size).fill()
-        
-        if let context = NSGraphicsContext.current?.cgContext {
-            switch currentIconStyle {
-            case .sparkles:
-                drawSparkles(context: context, size: size)
-            case .circle:
-                drawCircle(context: context, size: size)
-            case .dot:
-                drawDot(context: context, size: size)
+        return NSImage(size: size, flipped: false) { rect in
+            // Clear background
+            NSColor.clear.setFill()
+            rect.fill()
+            
+            if let context = NSGraphicsContext.current?.cgContext {
+                switch self.currentIconStyle {
+                case .sparkles:
+                    self.drawSparkles(context: context, size: size)
+                case .circle:
+                    self.drawCircle(context: context, size: size)
+                case .dot:
+                    self.drawDot(context: context, size: size)
+                }
             }
+            
+            return true
         }
-        
-        image.unlockFocus()
-        image.isTemplate = false
-        
-        return image
     }
     
     private func drawSparkles(context: CGContext, size: NSSize) {

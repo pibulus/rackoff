@@ -22,20 +22,18 @@ enum FileDestination: String, CaseIterable {
     case skip = "Skip"
 }
 
-class FileType: Identifiable, ObservableObject {
+struct FileType: Identifiable {
     let id = UUID()
     let name: String
     let extensions: [String]
     let icon: String
-    let patterns: [String] // Legacy field - could be removed in future cleanup
-    @Published var isEnabled: Bool
-    @Published var destination: FileDestination
+    var isEnabled: Bool
+    var destination: FileDestination
     
-    init(name: String, extensions: [String], icon: String, patterns: [String], isEnabled: Bool = false, destination: FileDestination = .daily) {
+    init(name: String, extensions: [String], icon: String, isEnabled: Bool = false, destination: FileDestination = .daily) {
         self.name = name
         self.extensions = extensions
         self.icon = icon
-        self.patterns = patterns
         self.isEnabled = isEnabled
         self.destination = destination
     }
@@ -48,7 +46,6 @@ class VacManager: ObservableObject {
             name: "Screenshots",
             extensions: [".jpg", ".png", ".jpeg"],
             icon: "camera.viewfinder",
-            patterns: ["screenshot", "Screenshot", "Screen Shot"],
             isEnabled: true,
             destination: .daily
         ),
@@ -56,7 +53,6 @@ class VacManager: ObservableObject {
             name: "Documents",
             extensions: [".pdf", ".doc", ".docx", ".txt", ".rtf", ".pages", ".numbers", ".key"],
             icon: "doc.text",
-            patterns: ["*.pdf", "*.doc", "*.docx", "*.txt", "*.rtf", "*.pages", "*.numbers", "*.key"],
             isEnabled: false,
             destination: .typeFolder
         ),
@@ -64,7 +60,6 @@ class VacManager: ObservableObject {
             name: "Media",
             extensions: [".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".mp4", ".mov", ".avi"],
             icon: "photo",
-            patterns: ["*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp", "*.heic", "*.mp4", "*.mov", "*.avi"],
             isEnabled: false,
             destination: .typeFolder
         ),
@@ -72,7 +67,6 @@ class VacManager: ObservableObject {
             name: "Archives",
             extensions: [".zip", ".dmg", ".pkg", ".csv", ".json", ".xml", ".log"],
             icon: "archivebox",
-            patterns: ["*.zip", "*.dmg", "*.pkg", "*.csv", "*.json", "*.xml", "*.log"],
             isEnabled: false,
             destination: .typeFolder
         )
@@ -85,6 +79,7 @@ class VacManager: ObservableObject {
     @Published var lastRun: Date?
     
     private var saveTimer: Timer?
+    private var scheduleTimer: Timer?
     
     init() {
         loadPreferences()
@@ -95,12 +90,68 @@ class VacManager: ObservableObject {
         // Request notification permissions
         requestNotificationPermissions()
         
-        // Check if should run on launch
-        if schedule == .onLaunch {
+        // Setup scheduling
+        setupScheduling()
+    }
+    
+    deinit {
+        // Clean up timers to prevent memory leaks
+        saveTimer?.invalidate()
+        saveTimer = nil
+        scheduleTimer?.invalidate()
+        scheduleTimer = nil
+    }
+    
+    private func setupScheduling() {
+        // Cancel existing schedule timer
+        scheduleTimer?.invalidate()
+        
+        switch schedule {
+        case .manual:
+            // No automatic scheduling
+            break
+            
+        case .onLaunch:
+            // Run immediately on launch
             Task {
                 await vacuum()
             }
+            
+        case .daily:
+            // Schedule daily at 9 AM
+            scheduleDailyVacuum()
         }
+    }
+    
+    private func scheduleDailyVacuum() {
+        let calendar = Calendar.current
+        var dateComponents = calendar.dateComponents([.year, .month, .day], from: Date())
+        dateComponents.hour = 9
+        dateComponents.minute = 0
+        dateComponents.second = 0
+        
+        guard let targetDate = calendar.date(from: dateComponents) else { return }
+        
+        // If it's already past 9 AM today, schedule for tomorrow
+        let now = Date()
+        let scheduledDate = targetDate > now ? targetDate : calendar.date(byAdding: .day, value: 1, to: targetDate)!
+        
+        let timeInterval = scheduledDate.timeIntervalSince(now)
+        
+        // Schedule the timer
+        scheduleTimer = Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: false) { _ in
+            Task { @MainActor in
+                _ = await self.vacuum()
+                // Reschedule for next day
+                self.scheduleDailyVacuum()
+            }
+        }
+    }
+    
+    func updateSchedule(_ newSchedule: Schedule) {
+        schedule = newSchedule
+        setupScheduling()
+        savePreferences()
     }
     
     func toggleFileType(_ fileType: FileType, enabled: Bool) {
@@ -118,8 +169,9 @@ class VacManager: ObservableObject {
         }
     }
     
-    func vacuum() async {
+    func vacuum() async -> (movedCount: Int, errors: [String]) {
         var movedCount = 0
+        var errors: [String] = []
         
         // Process each enabled file type
         for fileType in fileTypes.filter({ $0.isEnabled }) {
@@ -130,7 +182,12 @@ class VacManager: ObservableObject {
                 let destinationFolder = getDestinationFolder(for: fileType)
                 
                 // Create destination folder if it doesn't exist
-                try? FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
+                do {
+                    try FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
+                } catch {
+                    errors.append("Failed to create folder: \(error.localizedDescription)")
+                    continue
+                }
                 
                 var destination = destinationFolder.appendingPathComponent(fileName)
                 
@@ -144,14 +201,14 @@ class VacManager: ObservableObject {
                         let newName = "\(nameWithoutExtension) \(counter).\(fileExtension)"
                         destination = destinationFolder.appendingPathComponent(newName)
                         counter += 1
-                    } while FileManager.default.fileExists(atPath: destination.path)
+                    } while FileManager.default.fileExists(atPath: destination.path) && counter < 100 // Prevent infinite loop
                 }
                 
                 do {
                     try FileManager.default.moveItem(at: file, to: destination)
                     movedCount += 1
                 } catch {
-                    print("Failed to move \(file.lastPathComponent): \(error)")
+                    errors.append("Failed to move \(file.lastPathComponent): \(error.localizedDescription)")
                 }
             }
         }
@@ -159,7 +216,9 @@ class VacManager: ObservableObject {
         // Update last run and show notification
         lastRun = Date()
         savePreferences()
-        showNotification(filesVacuumed: movedCount)
+        showNotification(filesVacuumed: movedCount, errors: errors)
+        
+        return (movedCount, errors)
     }
     
     private func getDestinationFolder(for fileType: FileType) -> URL {
@@ -251,16 +310,23 @@ class VacManager: ObservableObject {
         }
     }
     
-    private func showNotification(filesVacuumed count: Int) {
+    private func showNotification(filesVacuumed count: Int, errors: [String] = []) {
         let content = UNMutableNotificationContent()
         content.title = "RackOff Complete"
-        content.body = count > 0 
-            ? "Racked off \(count) file\(count == 1 ? "" : "s") to archive"
-            : "Desktop already clean"
+        
+        if !errors.isEmpty {
+            content.body = "Moved \(count) file\(count == 1 ? "" : "s") with \(errors.count) error\(errors.count == 1 ? "" : "s")"
+            content.subtitle = "Some files couldn't be moved"
+        } else if count > 0 {
+            content.body = "Racked off \(count) file\(count == 1 ? "" : "s") to archive"
+        } else {
+            content.body = "Desktop already clean"
+        }
+        
         content.sound = .default
         
         let request = UNNotificationRequest(
-            identifier: "vacuum-complete",
+            identifier: UUID().uuidString, // Unique ID to allow multiple notifications
             content: content,
             trigger: nil // Show immediately
         )
@@ -297,16 +363,17 @@ class VacManager: ObservableObject {
         }
         
         // Load file type preferences
-        for fileType in fileTypes {
+        for index in fileTypes.indices {
+            let fileType = fileTypes[index]
             let enabledKey = "fileType_\(fileType.name)"
             if UserDefaults.standard.object(forKey: enabledKey) != nil {
-                fileType.isEnabled = UserDefaults.standard.bool(forKey: enabledKey)
+                fileTypes[index].isEnabled = UserDefaults.standard.bool(forKey: enabledKey)
             }
             
             let destinationKey = "fileTypeDestination_\(fileType.name)"
             if let savedDestination = UserDefaults.standard.string(forKey: destinationKey),
                let destination = FileDestination(rawValue: savedDestination) {
-                fileType.destination = destination
+                fileTypes[index].destination = destination
             }
         }
     }
