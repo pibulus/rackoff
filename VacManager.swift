@@ -2,41 +2,50 @@ import Foundation
 import SwiftUI
 import UserNotifications
 
-enum Schedule: String, CaseIterable {
+enum Schedule: String, CaseIterable, Codable {
     case manual = "Manual"
     case onLaunch = "On Launch"
     case daily = "Daily"
 }
 
-enum OrganizationMode: String, CaseIterable {
+enum OrganizationMode: String, CaseIterable, Codable {
     case quickArchive = "Quick Archive"
     case sortByType = "Sort by Type"
     case smartClean = "Smart Clean"
 }
 
-enum FileDestination: String, CaseIterable {
+enum FileDestination: String, CaseIterable, Codable {
     case daily = "Daily"
     case weekly = "Weekly"
     case monthly = "Monthly"
     case typeFolder = "Type Folder"
+    case custom = "Custom Folder"
     case skip = "Skip"
 }
 
-struct FileType: Identifiable {
-    let id = UUID()
+struct FileType: Identifiable, Codable {
+    var id = UUID()
     let name: String
-    let extensions: [String]
+    var extensions: [String]
     let icon: String
     var isEnabled: Bool
     var destination: FileDestination
+    var customDestination: URL?
     
-    init(name: String, extensions: [String], icon: String, isEnabled: Bool = false, destination: FileDestination = .daily) {
+    init(name: String, extensions: [String], icon: String, isEnabled: Bool = false, destination: FileDestination = .daily, customDestination: URL? = nil) {
         self.name = name
         self.extensions = extensions
         self.icon = icon
         self.isEnabled = isEnabled
         self.destination = destination
+        self.customDestination = customDestination
     }
+}
+
+struct UndoOperation {
+    let source: URL
+    let destination: URL
+    let timestamp: Date
 }
 
 @MainActor
@@ -77,9 +86,13 @@ class VacManager: ObservableObject {
     @Published var schedule: Schedule = .manual
     @Published var organizationMode: OrganizationMode = .quickArchive
     @Published var lastRun: Date?
+    @Published var canUndo: Bool = false
+    @Published var isProcessing: Bool = false
+    @Published var currentProgress: (current: Int, total: Int) = (0, 0)
     
+    private var lastOperation: [UndoOperation] = []
     private var saveTimer: Timer?
-    private var scheduleTimer: Timer?
+    private weak var scheduleTimer: Timer?
     
     init() {
         loadPreferences()
@@ -170,15 +183,105 @@ class VacManager: ObservableObject {
         }
     }
     
+    func updateFileTypeCustomDestination(_ fileType: FileType, url: URL?) {
+        if let index = fileTypes.firstIndex(where: { $0.id == fileType.id }) {
+            fileTypes[index].customDestination = url
+            if url != nil {
+                fileTypes[index].destination = .custom
+            }
+            debouncedSave()
+        }
+    }
+    
+    func updateFileTypeExtensions(_ fileType: FileType, extensions: [String]) {
+        if let index = fileTypes.firstIndex(where: { $0.id == fileType.id }) {
+            fileTypes[index].extensions = extensions
+            debouncedSave()
+        }
+    }
+    
+    func updateDestinationFolder(_ url: URL) {
+        destinationFolder = url
+        savePreferences()
+    }
+    
+    func undoLastClean() async -> (restoredCount: Int, errors: [String]) {
+        guard canUndo && !lastOperation.isEmpty else {
+            return (0, ["No operations to undo"])
+        }
+        
+        isProcessing = true
+        defer { 
+            isProcessing = false
+            currentProgress = (0, 0)
+        }
+        
+        var restoredCount = 0
+        var errors: [String] = []
+        
+        currentProgress = (0, lastOperation.count)
+        
+        for operation in lastOperation {
+            currentProgress.current += 1
+            
+            // Allow UI to update
+            if currentProgress.current % 10 == 0 {
+                await Task.yield()
+            }
+            
+            do {
+                // Move file back to original location
+                try FileManager.default.moveItem(at: operation.destination, to: operation.source)
+                restoredCount += 1
+            } catch {
+                errors.append("Failed to restore \(operation.source.lastPathComponent): \(error.localizedDescription)")
+            }
+        }
+        
+        // Clear undo history after undoing
+        lastOperation = []
+        canUndo = false
+        
+        // Show notification
+        showUndoNotification(filesRestored: restoredCount, errors: errors)
+        
+        return (restoredCount, errors)
+    }
+    
+    func clearUndoHistory() {
+        lastOperation = []
+        canUndo = false
+    }
+    
     func vacuum() async -> (movedCount: Int, errors: [String]) {
+        isProcessing = true
+        defer { isProcessing = false }
+        
         var movedCount = 0
         var errors: [String] = []
+        var newUndoOperations: [UndoOperation] = []
+        
+        // First, count total files to move
+        var totalFiles = 0
+        for fileType in fileTypes.filter({ $0.isEnabled }) {
+            totalFiles += findFiles(ofType: fileType).count
+        }
+        
+        currentProgress = (0, totalFiles)
         
         // Process each enabled file type
         for fileType in fileTypes.filter({ $0.isEnabled }) {
             let files = findFiles(ofType: fileType)
             
             for file in files {
+                // Update progress
+                currentProgress.current += 1
+                
+                // Allow UI to update for large operations
+                if currentProgress.current % 10 == 0 {
+                    await Task.yield()
+                }
+                
                 let fileName = file.lastPathComponent
                 let destinationFolder = getDestinationFolder(for: fileType)
                 
@@ -202,16 +305,29 @@ class VacManager: ObservableObject {
                         let newName = "\(nameWithoutExtension) \(counter).\(fileExtension)"
                         destination = destinationFolder.appendingPathComponent(newName)
                         counter += 1
-                    } while FileManager.default.fileExists(atPath: destination.path) && counter < 100 // Prevent infinite loop
+                    } while FileManager.default.fileExists(atPath: destination.path) && counter < 100
                 }
                 
                 do {
                     try FileManager.default.moveItem(at: file, to: destination)
                     movedCount += 1
+                    
+                    // Track for undo
+                    newUndoOperations.append(UndoOperation(
+                        source: file,
+                        destination: destination,
+                        timestamp: Date()
+                    ))
                 } catch {
                     errors.append("Failed to move \(file.lastPathComponent): \(error.localizedDescription)")
                 }
             }
+        }
+        
+        // Store undo operations if any files were moved
+        if !newUndoOperations.isEmpty {
+            lastOperation = newUndoOperations
+            canUndo = true
         }
         
         // Update last run and show notification
@@ -219,6 +335,7 @@ class VacManager: ObservableObject {
         savePreferences()
         showNotification(filesVacuumed: movedCount, errors: errors)
         
+        currentProgress = (0, 0)
         return (movedCount, errors)
     }
     
@@ -254,6 +371,10 @@ class VacManager: ObservableObject {
                 
             case .typeFolder:
                 return destinationFolder.appendingPathComponent(fileType.name)
+                
+            case .custom:
+                // Use custom destination if set, otherwise fall back to type folder
+                return fileType.customDestination ?? destinationFolder.appendingPathComponent(fileType.name)
                 
             case .skip:
                 // This case shouldn't happen since we filter enabled file types
@@ -335,6 +456,34 @@ class VacManager: ObservableObject {
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
                 print("Failed to show notification: \(error)")
+            }
+        }
+    }
+    
+    private func showUndoNotification(filesRestored count: Int, errors: [String] = []) {
+        let content = UNMutableNotificationContent()
+        content.title = "Undo Complete"
+        
+        if !errors.isEmpty {
+            content.body = "Restored \(count) file\(count == 1 ? "" : "s") with \(errors.count) error\(errors.count == 1 ? "" : "s")"
+            content.subtitle = "Some files couldn't be restored"
+        } else if count > 0 {
+            content.body = "Restored \(count) file\(count == 1 ? "" : "s") to desktop"
+        } else {
+            content.body = "Nothing to undo"
+        }
+        
+        content.sound = .default
+        
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Failed to show undo notification: \(error)")
             }
         }
     }

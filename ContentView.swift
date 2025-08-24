@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var vacManager = VacManager()
+    @EnvironmentObject var vacManager: VacManager
     @State private var isVacuuming = false
     @State private var hoveredRow: UUID? = nil
     @State private var buttonHovered = false
@@ -69,6 +69,21 @@ struct ContentView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            
+            // Progress indicator for large operations
+            if vacManager.isProcessing && vacManager.currentProgress.total > 0 {
+                VStack(spacing: 4) {
+                    ProgressView(value: Double(vacManager.currentProgress.current), 
+                                total: Double(vacManager.currentProgress.total))
+                        .progressViewStyle(LinearProgressViewStyle(tint: Color(red: 1.0, green: 0.5, blue: 0.3)))
+                    
+                    Text("\(vacManager.currentProgress.current) of \(vacManager.currentProgress.total) files")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal)
+                .transition(.opacity.combined(with: .scale))
+            }
             
             // Clean Now button
             Button(action: performVacuum) {
@@ -261,6 +276,12 @@ struct FileTypeRow: View {
                 return "→ Monthly"
             case .typeFolder:
                 return "→ \(fileType.name)/"
+            case .custom:
+                if let customDest = fileType.customDestination {
+                    return "→ \(customDest.lastPathComponent)"
+                } else {
+                    return "→ Custom"
+                }
             case .skip:
                 return "→ Skip"
             }
