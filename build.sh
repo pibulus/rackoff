@@ -23,7 +23,7 @@ mkdir -p "$APP_NAME.app/Contents/MacOS"
 mkdir -p "$APP_NAME.app/Contents/Resources"
 
 # Compile Swift files with optimizations
-swiftc RackOffApp.swift ContentView.swift VacManager.swift PreferencesView.swift \
+swiftc RackOffApp.swift ContentView.swift VacManager.swift PreferencesView.swift RackOffConstants.swift \
     -o "$APP_NAME.app/Contents/MacOS/$APP_NAME" \
     -target arm64-apple-macos12.0 \
     -framework SwiftUI \
@@ -31,7 +31,8 @@ swiftc RackOffApp.swift ContentView.swift VacManager.swift PreferencesView.swift
     -framework UserNotifications \
     -parse-as-library \
     -O \
-    -whole-module-optimization
+    -whole-module-optimization \
+    -enable-library-evolution
 
 # Create Info.plist with App Store required keys
 cat > "$APP_NAME.app/Contents/Info.plist" << EOF

@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - Main Popover View
+/// The primary interface for RackOff - shows file types, organization modes, and clean button
 struct ContentView: View {
     @EnvironmentObject var vacManager: VacManager
     @State private var isVacuuming = false
@@ -24,20 +26,7 @@ struct ContentView: View {
         }
     }
     
-    // Cached gradients for performance
-    static let titleGradient = LinearGradient(
-        colors: [Color(red: 1.0, green: 0.5, blue: 0.3), 
-                Color(red: 1.0, green: 0.3, blue: 0.5)],
-        startPoint: .leading,
-        endPoint: .trailing
-    )
-    
-    static let iconGradient = LinearGradient(
-        colors: [Color(red: 1.0, green: 0.6, blue: 0.2), 
-                Color(red: 1.0, green: 0.4, blue: 0.6)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    // Use consistent brand colors
     
     var body: some View {
         VStack(spacing: 20) {
@@ -47,10 +36,10 @@ struct ContentView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "sparkles")
                             .font(.system(size: 20, weight: .medium))
-                            .foregroundStyle(Self.iconGradient)
+                            .foregroundStyle(RackOffColors.sunset)
                         Text("RackOff")
                             .font(.system(size: 32, weight: .heavy, design: .rounded))
-                            .foregroundStyle(Self.titleGradient)
+                            .foregroundStyle(RackOffColors.sunset)
                     }
                     Text("Desktop cleaning that gets it")
                         .font(.system(size: 12, weight: .medium))
@@ -66,7 +55,7 @@ struct ContentView: View {
                     }) {
                         Image(systemName: "gearshape.fill")
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(Self.iconGradient)
+                            .foregroundStyle(RackOffColors.sunset)
                             .opacity(gearHovered ? 1.0 : 0.6)
                             .scaleEffect(gearHovered ? 1.15 : 1.0)
                             .rotationEffect(.degrees(gearHovered ? 15 : 0))
@@ -204,7 +193,7 @@ struct ContentView: View {
             .scaleEffect(buttonHovered && !isVacuuming ? 1.05 : (isVacuuming ? 0.98 : 1.0))
             .accessibilityLabel(isVacuuming ? "Cleaning in progress" : "Clean desktop now")
             .onHover { hovering in
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                withAnimation(RackOffAnimations.quickSpring) {
                     buttonHovered = hovering
                 }
             }
@@ -227,14 +216,14 @@ struct ContentView: View {
                 .transition(.opacity.combined(with: .scale))
             }
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, RackOffSpacing.popoverPadding)
         .padding(.top, 80)
-        .padding(.bottom, 40)
-        .frame(width: 340, height: 580)
+        .padding(.bottom, RackOffSpacing.extraLarge + 8)
+        .frame(width: RackOffSizes.popoverWidth, height: RackOffSizes.popoverHeight)
     }
     
     func performVacuum() {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        withAnimation(RackOffAnimations.quickSpring) {
             isVacuuming = true
             showSuccess = false
             showError = false
@@ -250,7 +239,7 @@ struct ContentView: View {
             try? await Task.sleep(nanoseconds: 400_000_000) // 0.4s
             
             await MainActor.run {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                withAnimation(RackOffAnimations.quickSpring) {
                     isVacuuming = false
                     lastCleanResult = (result.movedCount, result.totalBytes)
                     
@@ -278,6 +267,8 @@ struct ContentView: View {
     }
 }
 
+// MARK: - Organization Mode Button
+/// Custom button for Quick/Sort/Smart selection with hover effects
 struct OrganizationButton: View {
     let title: String
     let mode: OrganizationMode
@@ -288,7 +279,7 @@ struct OrganizationButton: View {
     
     var body: some View {
         Button(action: {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(RackOffAnimations.quickSpring) {
                 vacManager.organizationMode = mode
             }
         }) {
@@ -300,19 +291,9 @@ struct OrganizationButton: View {
                 .background(
                     Group {
                         if isSelected {
-                            LinearGradient(
-                                colors: [Color(red: 1.0, green: 0.5, blue: 0.3), 
-                                        Color(red: 1.0, green: 0.3, blue: 0.5)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+                            RackOffColors.sunset
                         } else if isHovered {
-                            LinearGradient(
-                                colors: [Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.15), 
-                                        Color(red: 1.0, green: 0.3, blue: 0.5).opacity(0.1)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+                            RackOffColors.hoverBackground
                         } else {
                             Color.clear
                         }
@@ -330,6 +311,8 @@ struct OrganizationButton: View {
     }
 }
 
+// MARK: - File Type Toggle Row
+/// Individual file type with toggle, icon, and destination info
 struct FileTypeRow: View {
     let fileType: FileType
     @ObservedObject var vacManager: VacManager
@@ -419,7 +402,7 @@ struct FileTypeRow: View {
         )
         .contentShape(Rectangle())
         .onTapGesture {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(RackOffAnimations.quickSpring) {
                 vacManager.toggleFileType(fileType, enabled: !fileType.isEnabled)
             }
         }

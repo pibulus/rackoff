@@ -9,13 +9,7 @@ struct PreferencesView: View {
     @State private var showUndoSuccess = false
     @State private var undoCount = 0
     
-    // Color scheme matching main app
-    static let accentGradient = LinearGradient(
-        colors: [Color(red: 1.0, green: 0.5, blue: 0.3), 
-                Color(red: 1.0, green: 0.3, blue: 0.5)],
-        startPoint: .leading,
-        endPoint: .trailing
-    )
+    // Use consistent brand colors
     
     var body: some View {
         VStack(spacing: 0) {
@@ -85,7 +79,7 @@ struct PreferencesView: View {
                     HStack {
                         Image(systemName: "arrow.uturn.backward.circle.fill")
                             .font(.system(size: 14))
-                            .foregroundStyle(Self.accentGradient)
+                            .foregroundStyle(RackOffColors.sunset)
                         
                         Text("Last clean moved files")
                             .font(.system(size: 12))
@@ -119,7 +113,7 @@ struct PreferencesView: View {
                 }
             }
         }
-        .frame(width: 600, height: 500)
+        .frame(width: RackOffSizes.preferencesWidth, height: RackOffSizes.preferencesHeight)
     }
 }
 
@@ -136,14 +130,14 @@ struct TabButton: View {
     
     var body: some View {
         Button(action: {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(RackOffAnimations.quickSpring) {
                 selectedTab = id
             }
         }) {
             VStack(spacing: 4) {
                 Image(systemName: icon)
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(isSelected ? PreferencesView.accentGradient : 
+                    .foregroundStyle(isSelected ? RackOffColors.sunset : 
                                    LinearGradient(colors: [Color.secondary], startPoint: .leading, endPoint: .trailing))
                     .scaleEffect(isHovered ? 1.1 : 1.0)
                 
@@ -158,7 +152,7 @@ struct TabButton: View {
                     Spacer()
                     if isSelected {
                         Rectangle()
-                            .fill(PreferencesView.accentGradient)
+                            .fill(RackOffColors.sunset)
                             .frame(height: 3)
                             .transition(.opacity.combined(with: .scale))
                     }
@@ -185,7 +179,7 @@ struct CleaningPreferences: View {
             VStack(alignment: .leading, spacing: 12) {
                 Label("Organization Style", systemImage: "square.grid.3x3")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(PreferencesView.accentGradient)
+                    .foregroundStyle(RackOffColors.sunset)
                 
                 VStack(alignment: .leading, spacing: 10) {
                     OrganizationModeRow(
@@ -218,7 +212,7 @@ struct CleaningPreferences: View {
             VStack(alignment: .leading, spacing: 12) {
                 Label("What to Clean", systemImage: "doc.on.doc")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(PreferencesView.accentGradient)
+                    .foregroundStyle(RackOffColors.sunset)
                 
                 Text("Choose which file types RackOff should handle")
                     .font(.system(size: 11))
@@ -251,7 +245,7 @@ struct SchedulePreferences: View {
             VStack(alignment: .leading, spacing: 16) {
                 Label("Automatic Cleaning", systemImage: "arrow.triangle.2.circlepath")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(PreferencesView.accentGradient)
+                    .foregroundStyle(RackOffColors.sunset)
                 
                 HStack {
                     Toggle(isOn: $enableDaily) {
@@ -279,7 +273,7 @@ struct SchedulePreferences: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Label("When to Clean", systemImage: "clock")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(PreferencesView.accentGradient)
+                        .foregroundStyle(RackOffColors.sunset)
                     
                     HStack(spacing: 16) {
                         Image(systemName: "sunrise.fill")
@@ -321,7 +315,7 @@ struct SchedulePreferences: View {
             VStack(alignment: .leading, spacing: 12) {
                 Label("Cleaning Stats", systemImage: "chart.bar.fill")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(PreferencesView.accentGradient)
+                    .foregroundStyle(RackOffColors.sunset)
                 
                 HStack(spacing: 16) {
                     StatBox(
@@ -347,13 +341,6 @@ struct SchedulePreferences: View {
             Spacer()
         }
     }
-    
-    func formatBytes(_ bytes: Int64) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        formatter.zeroPadsFractionDigits = true
-        return formatter.string(fromByteCount: bytes)
-    }
 }
 
 // Folders preferences tab
@@ -367,7 +354,7 @@ struct FoldersPreferences: View {
             VStack(alignment: .leading, spacing: 12) {
                 Label("Archive Location", systemImage: "archivebox.fill")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(PreferencesView.accentGradient)
+                    .foregroundStyle(RackOffColors.sunset)
                 
                 HStack {
                     Image(systemName: "folder.fill")
@@ -400,7 +387,7 @@ struct FoldersPreferences: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Label("Custom Destinations", systemImage: "arrow.triangle.branch")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(PreferencesView.accentGradient)
+                        .foregroundStyle(RackOffColors.sunset)
                     
                     Text("Set custom folders for each file type")
                         .font(.system(size: 11))
@@ -442,7 +429,7 @@ struct AboutPreferences: View {
             VStack(spacing: 12) {
                 Image(systemName: "sparkles")
                     .font(.system(size: 48, weight: .medium))
-                    .foregroundStyle(PreferencesView.accentGradient)
+                    .foregroundStyle(RackOffColors.sunset)
                     .rotationEffect(.degrees(testSpinning ? 360 : 0))
                     .animation(testSpinning ? .linear(duration: 2).repeatForever(autoreverses: false) : .default, value: testSpinning)
                     .onTapGesture {
@@ -451,7 +438,7 @@ struct AboutPreferences: View {
                 
                 Text("RackOff")
                     .font(.system(size: 28, weight: .heavy, design: .rounded))
-                    .foregroundStyle(PreferencesView.accentGradient)
+                    .foregroundStyle(RackOffColors.sunset)
                 
                 Text("Version 1.0.0")
                     .font(.system(size: 12))
@@ -469,7 +456,7 @@ struct AboutPreferences: View {
                         .fill(Color(NSColor.controlBackgroundColor))
                         .overlay(
                             Capsule()
-                                .stroke(PreferencesView.accentGradient, lineWidth: 1)
+                                .stroke(RackOffColors.sunset, lineWidth: 1)
                         )
                 )
             
@@ -530,14 +517,14 @@ struct OrganizationModeRow: View {
     
     var body: some View {
         Button(action: {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(RackOffAnimations.quickSpring) {
                 vacManager.organizationMode = mode
             }
         }) {
             HStack(spacing: 12) {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 18))
-                    .foregroundStyle(isSelected ? PreferencesView.accentGradient : 
+                    .foregroundStyle(isSelected ? RackOffColors.sunset : 
                                    LinearGradient(colors: [Color.secondary], startPoint: .leading, endPoint: .trailing))
                 
                 VStack(alignment: .leading, spacing: 2) {
@@ -660,7 +647,7 @@ struct StatBox: View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 20))
-                .foregroundStyle(PreferencesView.accentGradient)
+                .foregroundStyle(RackOffColors.sunset)
             
             Text(value)
                 .font(.system(size: 16, weight: .bold))
@@ -696,7 +683,7 @@ struct PhilosophyRow: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 16))
-                .foregroundStyle(PreferencesView.accentGradient)
+                .foregroundStyle(RackOffColors.sunset)
                 .frame(width: 24)
             
             Text(text)
