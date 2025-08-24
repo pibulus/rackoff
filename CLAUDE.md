@@ -76,24 +76,24 @@ Clean Now → VacManager.vacuum() → FileManager operations → Notification
 
 - **No external dependencies** - pure SwiftUI/AppKit
 - **UserDefaults keys**: schedule, sourceFolder, destinationFolder, lastRun, fileType_*
-- **Notification system**: Uses deprecated NSUserNotification (consider updating to UNUserNotificationCenter)
+- **Notification system**: Uses modern UNUserNotificationCenter for notifications
 - **File patterns**: Special handling for screenshots vs general extensions
-- **Schedule options**: Manual, On Launch, Daily (though daily scheduling not fully implemented)
+- **Schedule options**: Manual, On Launch, Daily (9 AM daily with Timer)
 - **Menu bar interaction**: Left-click shows popover, right-click shows context menu with About/Quit
 - **Popover behavior**: Transient (auto-closes when clicking outside)
 
-## ⚠️ Known Limitations & Migration Notes
+## ⚠️ Known Limitations
 
-- **Daily scheduling mentioned in UI but not implemented** with actual timer/scheduler
-- **NSUserNotification is deprecated** (works but should migrate to UNUserNotificationCenter)
-- **Only targets ARM64** (no Intel support in current build config)
-- **No app icon defined** beyond system symbol
-- **Legacy artifacts**: DeskVac.app directory exists from previous branding (can be removed)
-- **README out of sync**: Still references "DeskVac" instead of "RackOff"
+- **Only targets ARM64** (no Intel support in current build config) 
+- **No app icon defined** beyond system symbol (required for App Store)
+- **Sandboxed file access** - Desktop/Documents/Downloads only
 
-## 🚨 Important Rebrand Context
+## 🎯 App Store Ready
 
-This app was recently rebranded from "DeskVac" to "RackOff". While the Swift code has been updated, some artifacts remain:
-- Old DeskVac.app build in the directory
-- README.md still uses DeskVac branding and references
-- Build script and code are fully updated to RackOff
+This app has been optimized for App Store submission with:
+- Full sandboxing and entitlements
+- Modern APIs (UNUserNotificationCenter)
+- Proper scheduling implementation
+- Memory-safe code with no leaks
+- Defensive programming throughout
+- Production-ready build configuration

@@ -48,7 +48,7 @@ Package.pins
 Package.resolved
 
 # App bundle (keep source, ignore built app)
-DeskVac.app/
+# Note: RackOff.app is tracked for easy testing/distribution
 
 # Logs
 *.log
