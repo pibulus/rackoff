@@ -10,12 +10,16 @@
     <key>com.apple.security.files.user-selected.read-write</key>
     <true/>
     
-    <!-- Desktop folder access for cleaning -->
+    <!-- Downloads folder access -->
     <key>com.apple.security.files.downloads.read-write</key>
     <true/>
     
     <!-- Documents folder access for Archive -->
     <key>com.apple.security.files.documents.read-write</key>
+    <true/>
+    
+    <!-- Desktop folder access for cleaning -->
+    <key>com.apple.security.files.desktop.read-write</key>
     <true/>
     
     <!-- Network client for potential future features -->

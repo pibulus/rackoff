@@ -72,8 +72,8 @@ class VacManager: ObservableObject {
         )
     ]
     
-    @Published var sourceFolder: URL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
-    @Published var destinationFolder: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("Archive")
+    @Published var sourceFolder: URL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Desktop")
+    @Published var destinationFolder: URL = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Documents")).appendingPathComponent("Archive")
     @Published var schedule: Schedule = .manual
     @Published var organizationMode: OrganizationMode = .quickArchive
     @Published var lastRun: Date?
@@ -114,7 +114,7 @@ class VacManager: ObservableObject {
         case .onLaunch:
             // Run immediately on launch
             Task {
-                await vacuum()
+                _ = await vacuum()
             }
             
         case .daily:
@@ -134,7 +134,8 @@ class VacManager: ObservableObject {
         
         // If it's already past 9 AM today, schedule for tomorrow
         let now = Date()
-        let scheduledDate = targetDate > now ? targetDate : calendar.date(byAdding: .day, value: 1, to: targetDate)!
+        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: targetDate) else { return }
+        let scheduledDate = targetDate > now ? targetDate : tomorrow
         
         let timeInterval = scheduledDate.timeIntervalSince(now)
         
