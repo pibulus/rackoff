@@ -5,6 +5,7 @@ struct ContentView: View {
     @State private var isVacuuming = false
     @State private var hoveredRow: UUID? = nil
     @State private var buttonHovered = false
+    @State private var gearHovered = false
     @State private var showSuccess = false
     @State private var showError = false
     @State private var errorMessage = ""
@@ -40,19 +41,45 @@ struct ContentView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            // RackOff branding
-            VStack(spacing: 6) {
-                HStack(spacing: 8) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundStyle(Self.iconGradient)
-                    Text("RackOff")
-                        .font(.system(size: 32, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Self.titleGradient)
+            // RackOff branding with settings gear
+            ZStack {
+                VStack(spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundStyle(Self.iconGradient)
+                        Text("RackOff")
+                            .font(.system(size: 32, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Self.titleGradient)
+                    }
+                    Text("Desktop cleaning that gets it")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
                 }
-                Text("Desktop cleaning that gets it")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
+                
+                // Settings gear in top right
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        // Post notification to open preferences
+                        NotificationCenter.default.post(name: Notification.Name("ShowPreferences"), object: nil)
+                    }) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(Self.iconGradient)
+                            .opacity(gearHovered ? 1.0 : 0.6)
+                            .scaleEffect(gearHovered ? 1.15 : 1.0)
+                            .rotationEffect(.degrees(gearHovered ? 15 : 0))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .onHover { hovering in
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                            gearHovered = hovering
+                        }
+                    }
+                    .help("Preferences")
+                }
+                .offset(y: -20)
             }
             
             // File type toggles
@@ -73,7 +100,7 @@ struct ContentView: View {
             }
             .padding(.vertical, 8)
             
-            Spacer(minLength: 10)
+            Spacer(minLength: 4)
             
             // Organization mode picker
             HStack(spacing: 8) {
@@ -202,7 +229,7 @@ struct ContentView: View {
         }
         .padding(.horizontal, 24)
         .padding(.top, 80)
-        .padding(.bottom, 32)
+        .padding(.bottom, 40)
         .frame(width: 340, height: 580)
     }
     
@@ -255,6 +282,7 @@ struct OrganizationButton: View {
     let title: String
     let mode: OrganizationMode
     @ObservedObject var vacManager: VacManager
+    @State private var isHovered = false
     
     var isSelected: Bool { vacManager.organizationMode == mode }
     
@@ -266,7 +294,7 @@ struct OrganizationButton: View {
         }) {
             Text(title)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(isSelected ? .white : .secondary)
+                .foregroundColor(isSelected ? .white : (isHovered ? .primary : .secondary))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
                 .background(
@@ -278,14 +306,27 @@ struct OrganizationButton: View {
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
+                        } else if isHovered {
+                            LinearGradient(
+                                colors: [Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.15), 
+                                        Color(red: 1.0, green: 0.3, blue: 0.5).opacity(0.1)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
                         } else {
                             Color.clear
                         }
                     }
                 )
                 .cornerRadius(6)
+                .scaleEffect(isHovered && !isSelected ? 1.05 : 1.0)
         }
         .buttonStyle(PlainButtonStyle())
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
     }
 }
 

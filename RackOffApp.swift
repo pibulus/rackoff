@@ -104,6 +104,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             currentIconStyle = style
         }
         
+        // Listen for preferences notification
+        NotificationCenter.default.addObserver(self, selector: #selector(showPreferences), name: Notification.Name("ShowPreferences"), object: nil)
+        
         // Create menu bar item
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         
