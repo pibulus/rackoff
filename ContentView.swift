@@ -36,7 +36,7 @@ struct ContentView: View {
                         .font(.system(size: 32, weight: .heavy, design: .rounded))
                         .foregroundStyle(Self.titleGradient)
                 }
-                Text("Your desktop's best friend")
+                Text("Desktop cleaning that gets it")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
             }

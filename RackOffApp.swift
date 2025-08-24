@@ -28,12 +28,12 @@ struct AboutView: View {
             }
             .padding(.bottom, 4)
             
-            Text("Your desktop's chaos nemesis")
+            Text("Desktop chaos? Not anymore.")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundColor(.secondary)
                 .italic()
             
-            Text("Because life's too short for messy desktops.")
+            Text("One click. Clean desktop. Back to whatever you were doing.")
                 .font(.system(size: 13))
                 .multilineTextAlignment(.center)
                 .foregroundColor(.primary)
