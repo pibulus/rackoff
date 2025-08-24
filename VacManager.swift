@@ -153,8 +153,9 @@ class VacManager: ObservableObject {
         let timeInterval = scheduledDate.timeIntervalSince(now)
         
         // Schedule the timer
-        scheduleTimer = Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: false) { _ in
+        scheduleTimer = Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: false) { [weak self] _ in
             Task { @MainActor in
+                guard let self = self else { return }
                 _ = await self.vacuum()
                 // Reschedule for next day
                 self.scheduleDailyVacuum()
@@ -525,6 +526,16 @@ class VacManager: ObservableObject {
                let destination = FileDestination(rawValue: savedDestination) {
                 fileTypes[index].destination = destination
             }
+            
+            let customDestKey = "fileTypeCustomDest_\(fileType.name)"
+            if let customDestURL = UserDefaults.standard.url(forKey: customDestKey) {
+                fileTypes[index].customDestination = customDestURL
+            }
+            
+            let extensionsKey = "fileTypeExtensions_\(fileType.name)"
+            if let savedExtensions = UserDefaults.standard.array(forKey: extensionsKey) as? [String] {
+                fileTypes[index].extensions = savedExtensions
+            }
         }
     }
     
@@ -542,6 +553,16 @@ class VacManager: ObservableObject {
             
             let destinationKey = "fileTypeDestination_\(fileType.name)"
             UserDefaults.standard.set(fileType.destination.rawValue, forKey: destinationKey)
+            
+            let customDestKey = "fileTypeCustomDest_\(fileType.name)"
+            if let customDest = fileType.customDestination {
+                UserDefaults.standard.set(customDest, forKey: customDestKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: customDestKey)
+            }
+            
+            let extensionsKey = "fileTypeExtensions_\(fileType.name)"
+            UserDefaults.standard.set(fileType.extensions, forKey: extensionsKey)
         }
     }
     
@@ -550,9 +571,9 @@ class VacManager: ObservableObject {
         saveTimer?.invalidate()
         
         // Start new timer - save after 500ms of inactivity
-        saveTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
+        saveTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
             Task { @MainActor in
-                self.savePreferences()
+                self?.savePreferences()
             }
         }
     }

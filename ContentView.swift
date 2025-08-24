@@ -359,6 +359,10 @@ struct FileTypeRow: View {
                     Button("\(fileType.name) folder") {
                         vacManager.updateFileTypeDestination(fileType, destination: .typeFolder)
                     }
+                    Button("Custom folder...") {
+                        vacManager.updateFileTypeDestination(fileType, destination: .custom)
+                        // Note: User needs to set custom destination in Preferences
+                    }
                 }
                 
                 Section {
