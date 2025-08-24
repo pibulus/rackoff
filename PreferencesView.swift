@@ -323,26 +323,23 @@ struct SchedulePreferences: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(PreferencesView.accentGradient)
                 
-                HStack(spacing: 20) {
+                HStack(spacing: 16) {
                     StatBox(
                         icon: "doc.fill",
                         value: "0",
-                        label: "Files Cleaned",
-                        color: .blue
+                        label: "Files Cleaned"
                     )
                     
                     StatBox(
                         icon: "arrow.down.doc.fill",
                         value: "0 KB",
-                        label: "Space Saved",
-                        color: .green
+                        label: "Space Saved"
                     )
                     
                     StatBox(
                         icon: "calendar",
                         value: "0",
-                        label: "Sessions",
-                        color: .purple
+                        label: "Sessions"
                     )
                 }
             }
@@ -480,20 +477,17 @@ struct AboutPreferences: View {
             VStack(spacing: 16) {
                 PhilosophyRow(
                     icon: "bolt.fill",
-                    text: "One click, no drama",
-                    color: .orange
+                    text: "One click, no drama"
                 )
                 
                 PhilosophyRow(
                     icon: "heart.fill",
-                    text: "Respects your workflow",
-                    color: .pink
+                    text: "Respects your workflow"
                 )
                 
                 PhilosophyRow(
                     icon: "sparkles",
-                    text: "Makes desktops happy",
-                    color: .purple
+                    text: "Makes desktops happy"
                 )
             }
             .padding(20)
@@ -661,13 +655,12 @@ struct StatBox: View {
     let icon: String
     let value: String
     let label: String
-    let color: Color
     
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 20))
-                .foregroundColor(color)
+                .foregroundStyle(PreferencesView.accentGradient)
             
             Text(value)
                 .font(.system(size: 16, weight: .bold))
@@ -679,7 +672,18 @@ struct StatBox: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
-        .background(color.opacity(0.1))
+        .background(
+            LinearGradient(
+                colors: [Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.05), 
+                        Color(red: 1.0, green: 0.3, blue: 0.5).opacity(0.03)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.15), lineWidth: 1)
+        )
         .cornerRadius(8)
     }
 }
@@ -687,13 +691,12 @@ struct StatBox: View {
 struct PhilosophyRow: View {
     let icon: String
     let text: String
-    let color: Color
     
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 16))
-                .foregroundColor(color)
+                .foregroundStyle(PreferencesView.accentGradient)
                 .frame(width: 24)
             
             Text(text)

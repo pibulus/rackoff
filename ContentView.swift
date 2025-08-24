@@ -76,13 +76,28 @@ struct ContentView: View {
             Spacer(minLength: 10)
             
             // Organization mode picker
-            Picker("", selection: $vacManager.organizationMode) {
-                Text("Quick Archive").tag(OrganizationMode.quickArchive)
-                Text("Sort by Type").tag(OrganizationMode.sortByType) 
-                Text("Smart Clean").tag(OrganizationMode.smartClean)
+            HStack(spacing: 8) {
+                OrganizationButton(
+                    title: "Quick",
+                    mode: .quickArchive,
+                    vacManager: vacManager
+                )
+                
+                OrganizationButton(
+                    title: "Sort",
+                    mode: .sortByType,
+                    vacManager: vacManager
+                )
+                
+                OrganizationButton(
+                    title: "Smart",
+                    mode: .smartClean,
+                    vacManager: vacManager
+                )
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+            .padding(4)
+            .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
+            .cornerRadius(10)
             
             // Progress indicator for large operations
             if vacManager.isProcessing && vacManager.currentProgress.total > 0 {
@@ -184,33 +199,11 @@ struct ContentView: View {
                 .cornerRadius(6)
                 .transition(.opacity.combined(with: .scale))
             }
-            
-            // Quit button
-            Button(action: {
-                NSApplication.shared.terminate(nil)
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "power")
-                        .font(.system(size: 12))
-                    Text("Quit RackOff")
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .foregroundColor(.secondary)
-                .frame(width: 100, height: 32)
-                .background(Color(NSColor.controlBackgroundColor).opacity(0.8))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                )
-                .cornerRadius(8)
-            }
-            .buttonStyle(PlainButtonStyle())
-            .padding(.top, showError ? 6 : 12)
         }
         .padding(.horizontal, 24)
         .padding(.top, 80)
-        .padding(.bottom, 48)
-        .frame(width: 340, height: 630)
+        .padding(.bottom, 32)
+        .frame(width: 340, height: 580)
     }
     
     func performVacuum() {
@@ -255,6 +248,44 @@ struct ContentView: View {
                 }
             }
         }
+    }
+}
+
+struct OrganizationButton: View {
+    let title: String
+    let mode: OrganizationMode
+    @ObservedObject var vacManager: VacManager
+    
+    var isSelected: Bool { vacManager.organizationMode == mode }
+    
+    var body: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                vacManager.organizationMode = mode
+            }
+        }) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(isSelected ? .white : .secondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(
+                    Group {
+                        if isSelected {
+                            LinearGradient(
+                                colors: [Color(red: 1.0, green: 0.5, blue: 0.3), 
+                                        Color(red: 1.0, green: 0.3, blue: 0.5)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        } else {
+                            Color.clear
+                        }
+                    }
+                )
+                .cornerRadius(6)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
