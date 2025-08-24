@@ -1,99 +1,76 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Quick guidance for Claude Code when working on RackOff.
 
-## 🎯 Project Overview
+## What this is
 
-RackOff is a minimal macOS menu bar app that archives desktop clutter into organized daily folders. It's part of the SoftStack suite - modular apps that do one thing perfectly.
+RackOff - desktop cleaning with attitude.  
+SwiftUI menu bar app. No nonsense. Does one thing well.
 
-## 🛠 Build & Development Commands
+## Build commands
 
 ```bash
-# Build the app
-./build.sh
-
-# Run the built app
-open RackOff.app
-
-# Install to Applications
-cp -r RackOff.app /Applications/
-
-# Clean build artifacts
-rm -rf RackOff.app
-
-# Debug compilation issues
-swiftc -version  # Check Swift compiler version
+./build.sh              # Compile and sign
+open RackOff.app        # Test it
+cp -r RackOff.app /Applications/  # Ship it
 ```
 
-## 🏗 Architecture & Key Components
+## Architecture
 
-### Core Structure
-- **SwiftUI menu bar app** with popover interface
-- **No Package.swift** - uses direct swiftc compilation via build.sh
-- **Target**: arm64-apple-macos12.0 (Apple Silicon native)
-- **LSUIElement**: true (runs as menu bar only, no dock icon)
+**Three files. That's it:**
+- `RackOffApp.swift` - Menu bar setup, icon management
+- `ContentView.swift` - The UI you see in the popover
+- `VacManager.swift` - The cleaning logic
 
-### Key Files & Their Roles
+**Key patterns:**
+- SwiftUI + AppKit for menu bar
+- UserDefaults for preferences
+- Timer for daily scheduling
+- FileManager for the actual cleaning
 
-1. **RackOffApp.swift**: Entry point, manages NSStatusItem and popover
-   - Creates menu bar sparkles icon
-   - Handles popover show/hide logic
+## Current state
 
-2. **ContentView.swift**: Main UI with RackOff branding
-   - Gradient title with playful aesthetics
-   - Color-coded file type toggles
-   - Animated "Clean Now" button with hover effects
+✅ App Store ready:
+- Sandboxed with proper entitlements
+- Modern APIs (no deprecations)
+- Memory-safe (no leaks)
+- Signed and optimized
 
-3. **VacManager.swift**: Business logic and file operations
-   - Manages file type configurations
-   - Performs vacuum operations (moving files to dated archives)
-   - Handles UserDefaults persistence
-   - Creates archive structure: `Archive/YYYY-MM-DD/`
+⚠️ Needs before App Store:
+- Real app icon (not just system symbol)
+- Your Developer ID for signing
+- Screenshots for listing
 
-### Data Flow
-```
-User Toggle → VacManager.toggleFileType() → UserDefaults save
-Clean Now → VacManager.vacuum() → FileManager operations → Notification
-```
+## Tech choices
 
-## 📝 Code Style Conventions
+**Why direct compilation?**
+- No Xcode project bloat
+- Clean, minimal build
+- Fast iteration
 
-- **SwiftUI views**: Extensive use of modifiers for visual polish
-- **Animations**: Spring animations with specific response/damping values
-- **Colors**: Inline LinearGradients for branded look (orange-pink theme)
-- **State management**: @StateObject for VacManager, @State for UI states
-- **File operations**: Async/await pattern for vacuum operations
+**Why track the .app?**
+- Easy testing for you
+- Quick distribution
+- See exactly what ships
 
-## 🎨 UI Design Language
+## Organization modes
 
-- **Branding**: "RackOff" with sparkles icon and gradient text
-- **Color scheme**: Orange-pink gradients throughout
-- **Interactions**: Hover effects with scale, glow, and rotation animations
-- **File types**: Each has unique accent color (Screenshots=orange, PDFs=blue, etc.)
-- **Button states**: Visual feedback for hover, active, and processing states
+1. **Quick Archive** - Everything → daily folders
+2. **Sort by Type** - Files → type folders
+3. **Smart Clean** - Right-click to customize per type
 
-## 🔧 Development Notes
+## Known limits
 
-- **No external dependencies** - pure SwiftUI/AppKit
-- **UserDefaults keys**: schedule, sourceFolder, destinationFolder, lastRun, fileType_*
-- **Notification system**: Uses modern UNUserNotificationCenter for notifications
-- **File patterns**: Special handling for screenshots vs general extensions
-- **Schedule options**: Manual, On Launch, Daily (9 AM daily with Timer)
-- **Menu bar interaction**: Left-click shows popover, right-click shows context menu with About/Quit
-- **Popover behavior**: Transient (auto-closes when clicking outside)
+- ARM64 only (no Intel Macs)
+- Desktop/Documents/Downloads access only (sandboxed)
+- 9 AM daily schedule (not configurable yet)
 
-## ⚠️ Known Limitations
+## Voice notes
 
-- **Only targets ARM64** (no Intel support in current build config) 
-- **No app icon defined** beyond system symbol (required for App Store)
-- **Sandboxed file access** - Desktop/Documents/Downloads only
+Keep it minimal. No corporate speak.  
+Short sentences. Clear actions.  
+Show the door, get out of the way.
 
-## 🎯 App Store Ready
+---
 
-This app has been optimized for App Store submission with:
-- Full sandboxing and entitlements
-- Modern APIs (UNUserNotificationCenter)
-- Proper scheduling implementation
-- Memory-safe code with no leaks
-- Defensive programming throughout
-- Production-ready build configuration
+This is RackOff. Desktop cleaning that respects your space.

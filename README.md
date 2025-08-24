@@ -1,52 +1,58 @@
-# ✨ RackOff
+# RackOff ✨
 
-A delightful macOS menu bar app that archives desktop clutter into organized folders with attitude. Your desktop's chaos nemesis.
+Clean desktop. Clear mind. Done.
 
-## Features
+## What it does
 
-- **🎯 Three Organization Modes**: Quick Archive, Sort by Type, Smart Clean
-- **📦 Smart File Detection**: Screenshots, Documents, Media, Archives
-- **📅 Flexible Archiving**: Daily/weekly/monthly folders or type-based organization
-- **⏰ Scheduling Options**: Manual, on launch, or daily at 9 AM
-- **🎨 Playful UI**: Gradient animations, hover effects, and personality
-- **✨ Customizable Icons**: Choose your menu bar style
-- **🔐 App Store Ready**: Sandboxed, code-signed, and optimized
+Racks off desktop clutter into dated archives.  
+Pick your style. Click once. Desktop's clean.
 
-## Building
+**Three ways to organize:**
+- Quick Archive → daily folders
+- Sort by Type → file-kind folders  
+- Smart Clean → custom destinations
+
+## Get it running
 
 ```bash
+# Build
 ./build.sh
-```
 
-## Installing
-
-```bash
+# Install
 cp -r RackOff.app /Applications/
+
+# Run
+Click the sparkles in your menu bar
 ```
 
-## Usage
+## How it works
 
-1. Click the sparkles icon in your menu bar
-2. Toggle which file types to rack off
-3. Select source folder (default: Desktop)
-4. Select destination folder (default: Documents/Archive)
-5. Choose schedule (Manual/On Launch/Daily)
-6. Click "Clean Now" to clean up
+Toggle what to clean:
+- Screenshots that pile up
+- Documents that drift
+- Media that multiplies
+- Archives that accumulate
 
-Files are organized into `Archive/YYYY-MM-DD/` folders.
+Pick when to clean:
+- Manual (you decide)
+- On launch (auto-start)
+- Daily at 9 AM (set and forget)
 
-## File Types
+Files land in `~/Documents/Archive/[organized]`
 
-- **Screenshots** - screenshot*.jpg/png/jpeg files
-- **PDFs** - All PDF documents
-- **Images** - jpg, jpeg, png, gif, webp, heic
-- **Downloads** - dmg, zip, pkg installers
-- **Documents** - doc, docx, txt, rtf files
+## The deal
 
-## One Thing Done Well
+RackOff does one thing: desktop cleaning with attitude.
 
-RackOff does ONE thing: it racks off your desktop mess into organized daily folders. That's it. That's the app.
+Want fancier organization modes? Right-click file types in Smart Clean.  
+Want different icons? Right-click the menu bar sparkles.  
+Want your desktop back? Check the Archive folder.
+
+No accounts. No cloud. No judgment.  
+Just a clean desktop when you need it.
 
 ---
 
-Part of the SoftStack suite - $1 apps that do one thing perfectly.
+Part of SoftStack.  
+Light touch. Real work.  
+$1 apps that respect your space.
