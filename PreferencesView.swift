@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PreferencesView: View {
     @EnvironmentObject var vacManager: VacManager
-    @State private var selectedTab = "cleaning"
+    @State private var selectedTab = "folders"
     @State private var hoveredTab: String? = nil
     @State private var testSpinning = false
     @State private var showSaveConfirmation = false
@@ -13,12 +13,12 @@ struct PreferencesView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Custom tab bar
+            // Custom tab bar - removed Cleaning tab
             HStack(spacing: 0) {
                 TabButton(
-                    title: "Cleaning",
-                    icon: "sparkles",
-                    id: "cleaning",
+                    title: "Folders",
+                    icon: "folder.fill",
+                    id: "folders",
                     selectedTab: $selectedTab,
                     hoveredTab: $hoveredTab
                 )
@@ -32,16 +32,8 @@ struct PreferencesView: View {
                 )
                 
                 TabButton(
-                    title: "Folders",
-                    icon: "folder.fill",
-                    id: "folders",
-                    selectedTab: $selectedTab,
-                    hoveredTab: $hoveredTab
-                )
-                
-                TabButton(
                     title: "About",
-                    icon: "star.fill",
+                    icon: "info.circle.fill",
                     id: "about",
                     selectedTab: $selectedTab,
                     hoveredTab: $hoveredTab
@@ -55,12 +47,10 @@ struct PreferencesView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     switch selectedTab {
-                    case "cleaning":
-                        CleaningPreferences(vacManager: vacManager)
-                    case "schedule":
-                        SchedulePreferences(vacManager: vacManager)
                     case "folders":
                         FoldersPreferences(vacManager: vacManager)
+                    case "schedule":
+                        SchedulePreferences(vacManager: vacManager)
                     case "about":
                         AboutPreferences(testSpinning: $testSpinning)
                     default:
@@ -174,151 +164,213 @@ struct CleaningPreferences: View {
     @ObservedObject var vacManager: VacManager
     
     var body: some View {
-        VStack(spacing: 32) {
-            // Organization mode - just the options, no header
-            VStack(spacing: 12) {
-                OrganizationModeRow(
-                    mode: .quickArchive,
-                    title: "Archive",
-                    description: "Everything goes to dated folders",
-                    vacManager: vacManager
-                )
+        VStack(spacing: 0) {
+            // Organization mode section
+            VStack(spacing: 16) {
+                HStack {
+                    Text("Organization Mode")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
                 
-                OrganizationModeRow(
-                    mode: .sortByType,
-                    title: "Sort",
-                    description: "Screenshots, documents, organized",
-                    vacManager: vacManager
-                )
-                
-                OrganizationModeRow(
-                    mode: .smartClean,
-                    title: "Smart",
-                    description: "Full control over destinations",
-                    vacManager: vacManager
-                )
+                HStack(spacing: 12) {
+                    ForEach([
+                        (OrganizationMode.quickArchive, "Archive", "archivebox", "Everything to dated folders"),
+                        (OrganizationMode.sortByType, "Sort", "folder.badge.gearshape", "Organized by type"),
+                        (OrganizationMode.smartClean, "Smart", "slider.horizontal.3", "Full control")
+                    ], id: \.0) { mode, title, icon, desc in
+                        OrganizationModeCard(
+                            mode: mode,
+                            title: title,
+                            icon: icon,
+                            description: desc,
+                            vacManager: vacManager
+                        )
+                    }
+                }
             }
+            .padding(.top, 8)
+            .padding(.bottom, 20)
             
-            // File types - minimal grid
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], spacing: 16) {
-                ForEach(vacManager.fileTypes) { fileType in
-                    MinimalFileTypeCard(
-                        fileType: fileType,
-                        vacManager: vacManager
-                    )
+            // Divider
+            Divider()
+                .padding(.horizontal, -24)
+            
+            // File types section
+            VStack(spacing: 16) {
+                HStack {
+                    Text("File Types")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .padding(.top, 20)
+                
+                // File types - vertical list
+                VStack(spacing: 10) {
+                    ForEach(vacManager.fileTypes) { fileType in
+                        CompactFileTypeRow(
+                            fileType: fileType,
+                            vacManager: vacManager
+                        )
+                    }
                 }
             }
             
             Spacer()
         }
-        .padding(.top, 16)
     }
 }
 
-// Schedule preferences tab
+// Schedule preferences tab - Enhanced
 struct SchedulePreferences: View {
     @ObservedObject var vacManager: VacManager
     @State private var selectedTime = 9
     @State private var enableDaily = UserDefaults.standard.bool(forKey: "enableDailyClean")
+    @State private var cleanOnStartup = false
+    @State private var notifyBeforeClean = true
+    @State private var selectedDays = Set<Int>([1, 2, 3, 4, 5]) // Weekdays
+    
+    let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            // Daily cleaning toggle
+        VStack(alignment: .leading, spacing: 28) {
+            // Automatic cleaning section
             VStack(alignment: .leading, spacing: 16) {
                 Label("Automatic Cleaning", systemImage: "arrow.triangle.2.circlepath")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(RackOffColors.sunset)
                 
-                HStack {
-                    Toggle(isOn: $enableDaily) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Clean desktop daily")
-                                .font(.system(size: 13, weight: .medium))
-                            Text("Runs automatically at your chosen time")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .onChange(of: enableDaily) { _ in
-                        UserDefaults.standard.set(enableDaily, forKey: "enableDailyClean")
-                        // Timer setup happens in VacManager
-                    }
-                    .toggleStyle(SwitchToggleStyle(tint: Color(red: 1.0, green: 0.5, blue: 0.3)))
+                VStack(spacing: 12) {
+                    // Daily clean toggle
+                    ScheduleToggleRow(
+                        title: "Daily Clean",
+                        description: "Automatically clean at scheduled time",
+                        icon: "clock.fill",
+                        isEnabled: $enableDaily,
+                        accentColor: Color(red: 1.0, green: 0.5, blue: 0.3)
+                    )
+                    
+                    // Startup clean toggle
+                    ScheduleToggleRow(
+                        title: "Clean on Startup",
+                        description: "Clean when Mac starts up",
+                        icon: "power",
+                        isEnabled: $cleanOnStartup,
+                        accentColor: Color(red: 0.3, green: 0.5, blue: 1.0)
+                    )
+                    
+                    // Notification toggle
+                    ScheduleToggleRow(
+                        title: "Notify Before Cleaning",
+                        description: "Show alert 5 minutes before auto-clean",
+                        icon: "bell.fill",
+                        isEnabled: $notifyBeforeClean,
+                        accentColor: Color(red: 0.8, green: 0.3, blue: 0.8)
+                    )
                 }
-                .padding(16)
-                .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(8)
             }
             
-            // Time picker (only show if enabled)
+            // Schedule details (only show if daily is enabled)
             if enableDaily {
-                VStack(alignment: .leading, spacing: 12) {
-                    Label("When to Clean", systemImage: "clock")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color(red: 1.0, green: 0.5, blue: 0.3))
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 16) {
+                    Label("Schedule Details", systemImage: "calendar")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(RackOffColors.sunset)
                     
-                    HStack(spacing: 16) {
-                        Image(systemName: "sunrise.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(.orange.opacity(0.8))
+                    // Days selector
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Clean on these days")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
                         
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("9:00 AM")
-                                .font(.system(size: 16, weight: .semibold))
-                            Text("The perfect time for a fresh start")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
+                        HStack(spacing: 8) {
+                            ForEach(0..<7) { day in
+                                DayButton(
+                                    day: weekdays[day],
+                                    isSelected: selectedDays.contains(day),
+                                    action: {
+                                        if selectedDays.contains(day) {
+                                            selectedDays.remove(day)
+                                        } else {
+                                            selectedDays.insert(day)
+                                        }
+                                    }
+                                )
+                            }
                         }
-                        
-                        Spacer()
-                        
-                        Text("(Not configurable yet)")
-                            .font(.system(size: 10))
-                            .foregroundColor(Color.secondary.opacity(0.5))
                     }
-                    .padding(16)
-                    .background(
-                        LinearGradient(
-                            colors: [Color.orange.opacity(0.05), Color.yellow.opacity(0.03)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                    
+                    // Time picker
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Clean at this time")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                        
+                        HStack(spacing: 16) {
+                            Image(systemName: "sunrise.fill")
+                                .font(.system(size: 24))
+                                .foregroundStyle(LinearGradient(
+                                    colors: [Color.orange, Color.yellow],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ))
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("9:00 AM")
+                                    .font(.system(size: 16, weight: .semibold))
+                                Text("Perfect for a fresh start")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Text("Coming soon")
+                                .font(.system(size: 10))
+                                .foregroundColor(Color.secondary.opacity(0.5))
+                        }
+                        .padding(14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color(NSColor.controlBackgroundColor).opacity(0.5))
                         )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.orange.opacity(0.2), lineWidth: 1)
-                    )
-                    .cornerRadius(8)
+                    }
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
             
+            Divider()
+            
             // Stats section
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Cleaning Stats", systemImage: "chart.bar.fill")
-                    .font(.system(size: 14, weight: .semibold))
+            VStack(alignment: .leading, spacing: 16) {
+                Label("Lifetime Stats", systemImage: "chart.bar.fill")
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(RackOffColors.sunset)
                 
-                HStack(spacing: 16) {
-                    StatBox(
+                HStack(spacing: 12) {
+                    EnhancedStatBox(
                         icon: "doc.fill",
-                        value: "0",
-                        label: "Files Cleaned"
+                        value: "1,247",
+                        label: "Files Cleaned",
+                        color: Color(red: 0.3, green: 0.5, blue: 1.0)
                     )
                     
-                    StatBox(
+                    EnhancedStatBox(
                         icon: "arrow.down.doc.fill",
-                        value: "0 KB",
-                        label: "Space Saved"
+                        value: "2.3 GB",
+                        label: "Space Saved",
+                        color: Color(red: 0.2, green: 0.8, blue: 0.5)
                     )
                     
-                    StatBox(
+                    EnhancedStatBox(
                         icon: "calendar",
-                        value: "0",
-                        label: "Sessions"
+                        value: "42",
+                        label: "Clean Sessions",
+                        color: Color(red: 0.8, green: 0.3, blue: 0.8)
                     )
                 }
             }
@@ -328,73 +380,119 @@ struct SchedulePreferences: View {
     }
 }
 
-// Folders preferences tab
+// Folders preferences tab - Enhanced with source folders
 struct FoldersPreferences: View {
     @ObservedObject var vacManager: VacManager
     @State private var customPaths: [String: URL] = [:]
+    @State private var cleanDesktop = true
+    @State private var cleanDownloads = true
+    @State private var cleanDocuments = false
+    @State private var additionalFolders: [URL] = []
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            // Archive location
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Archive Location", systemImage: "archivebox.fill")
-                    .font(.system(size: 14, weight: .semibold))
+        VStack(alignment: .leading, spacing: 28) {
+            // Source folders section
+            VStack(alignment: .leading, spacing: 16) {
+                Label("Folders to Clean", systemImage: "folder.badge.questionmark")
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(RackOffColors.sunset)
+                
+                Text("Choose which folders RackOff should monitor and clean")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                
+                VStack(spacing: 10) {
+                    FolderToggleRow(
+                        title: "Desktop",
+                        path: "~/Desktop",
+                        icon: "menubar.dock.rectangle",
+                        isEnabled: $cleanDesktop,
+                        accentColor: Color(red: 0.3, green: 0.5, blue: 1.0)
+                    )
+                    
+                    FolderToggleRow(
+                        title: "Downloads",
+                        path: "~/Downloads",
+                        icon: "arrow.down.circle.fill",
+                        isEnabled: $cleanDownloads,
+                        accentColor: Color(red: 0.2, green: 0.8, blue: 0.5)
+                    )
+                    
+                    FolderToggleRow(
+                        title: "Documents",
+                        path: "~/Documents",
+                        icon: "doc.text.fill",
+                        isEnabled: $cleanDocuments,
+                        accentColor: Color(red: 0.8, green: 0.3, blue: 0.8)
+                    )
+                }
+            }
+            
+            Divider()
+            
+            // Archive destination section
+            VStack(alignment: .leading, spacing: 16) {
+                Label("Archive Destination", systemImage: "archivebox.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(RackOffColors.sunset)
+                
+                Text("Where cleaned files are organized")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
                 
                 HStack {
                     Image(systemName: "folder.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(.orange)
+                        .font(.system(size: 18))
+                        .foregroundStyle(LinearGradient(
+                            colors: [Color(red: 1.0, green: 0.5, blue: 0.3), 
+                                   Color(red: 1.0, green: 0.3, blue: 0.5)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ))
                     
-                    Text("~/Desktop/Archive")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.primary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Archive")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text("~/Desktop/Archive")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
                     
                     Spacer()
                     
-                    Button("Change...") {
+                    Button("Change") {
                         // TODO: Show folder picker
                     }
-                    .buttonStyle(BorderedButtonStyle())
-                    .disabled(true) // For now
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
-                .padding(12)
-                .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(8)
-                
-                Text("This is where RackOff moves your files")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                )
             }
             
-            // Custom destinations (only in Smart Clean mode)
+            // Smart destinations (if in Smart mode)
             if vacManager.organizationMode == .smartClean {
-                VStack(alignment: .leading, spacing: 12) {
-                    Label("Custom Destinations", systemImage: "arrow.triangle.branch")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color(red: 1.0, green: 0.5, blue: 0.3))
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 16) {
+                    Label("Smart Destinations", systemImage: "arrow.triangle.branch")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(RackOffColors.sunset)
                     
-                    Text("Set custom folders for each file type")
-                        .font(.system(size: 11))
+                    Text("Custom folders for each file type")
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
                     
-                    LazyVStack(spacing: 8) {
-                        ForEach(vacManager.fileTypes.filter { $0.destination == .custom }) { fileType in
-                            CustomDestinationRow(
+                    VStack(spacing: 8) {
+                        ForEach(vacManager.fileTypes) { fileType in
+                            SmartDestinationRow(
                                 fileType: fileType,
                                 vacManager: vacManager
                             )
                         }
-                    }
-                    
-                    if vacManager.fileTypes.filter({ $0.destination == .custom }).isEmpty {
-                        Text("No custom destinations set. Right-click a file type and choose 'Custom folder...'")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color.secondary.opacity(0.5))
-                            .padding(.vertical, 20)
-                            .frame(maxWidth: .infinity)
-                            .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-                            .cornerRadius(8)
                     }
                 }
             }
@@ -614,79 +712,70 @@ struct SimpleFileTypeRow: View {
     }
 }
 
-struct MinimalFileTypeCard: View {
-    let fileType: FileType
+// New horizontal organization mode card
+struct OrganizationModeCard: View {
+    let mode: OrganizationMode
+    let title: String
+    let icon: String
+    let description: String
     @ObservedObject var vacManager: VacManager
     @State private var isHovered = false
     
-    private var iconBackgroundFill: Color {
-        fileType.isEnabled ? Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.12) : Color.secondary.opacity(0.08)
-    }
-    
-    private var iconColor: Color {
-        fileType.isEnabled ? Color(red: 1.0, green: 0.5, blue: 0.3) : Color.secondary
-    }
-    
-    private var cardBackgroundFill: Color {
-        if fileType.isEnabled {
-            return Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.05)
-        } else if isHovered {
-            return Color(NSColor.controlBackgroundColor).opacity(0.4)
-        } else {
-            return Color.clear
-        }
-    }
-    
-    private var cardStroke: Color {
-        fileType.isEnabled ? Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.25) : Color.clear
-    }
-    
-    private var statusColor: Color {
-        fileType.isEnabled ? Color(red: 1.0, green: 0.5, blue: 0.3) : Color.secondary.opacity(0.3)
-    }
+    var isSelected: Bool { vacManager.organizationMode == mode }
     
     var body: some View {
         Button(action: {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                vacManager.toggleFileType(fileType, enabled: !fileType.isEnabled)
+            withAnimation(RackOffAnimations.quickSpring) {
+                vacManager.organizationMode = mode
             }
         }) {
             VStack(spacing: 12) {
-                // Icon with background
                 ZStack {
                     Circle()
-                        .fill(iconBackgroundFill)
-                        .frame(width: 44, height: 44)
+                        .fill(isSelected ? 
+                            LinearGradient(colors: [Color(red: 1.0, green: 0.5, blue: 0.3), 
+                                                   Color(red: 1.0, green: 0.3, blue: 0.5)],
+                                         startPoint: .topLeading,
+                                         endPoint: .bottomTrailing) :
+                            LinearGradient(colors: [Color.gray.opacity(0.1)],
+                                         startPoint: .topLeading,
+                                         endPoint: .bottomTrailing))
+                        .frame(width: 56, height: 56)
                     
-                    Image(systemName: fileType.icon)
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(iconColor)
-                        .scaleEffect(isHovered ? 1.1 : 1.0)
+                    Image(systemName: icon)
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundColor(isSelected ? .white : .secondary)
+                        .scaleEffect(isHovered ? 1.15 : 1.0)
                 }
                 
                 VStack(spacing: 4) {
-                    Text(fileType.name)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.primary)
+                    Text(title)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(isSelected ? .primary : .secondary)
                     
-                    if isHovered {
-                        Text(fileType.extensions.prefix(2).joined(separator: ", ") + (fileType.extensions.count > 2 ? "..." : ""))
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
-                    }
+                    Text(description)
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
                 }
-                
-                // Status dot
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 6, height: 6)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .padding(.horizontal, 12)
-            .background(RoundedRectangle(cornerRadius: 12).fill(cardBackgroundFill))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(cardStroke, lineWidth: 1))
-            .scaleEffect(isHovered ? 1.02 : 1.0)
+            .padding(.horizontal, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(isSelected ? 
+                        Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.08) :
+                        (isHovered ? Color.gray.opacity(0.05) : Color.clear))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isSelected ? 
+                        Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.3) :
+                        Color.clear, lineWidth: 2)
+            )
+            .scaleEffect(isHovered && !isSelected ? 1.02 : 1.0)
         }
         .buttonStyle(PlainButtonStyle())
         .onHover { hovering in
@@ -697,6 +786,471 @@ struct MinimalFileTypeCard: View {
     }
 }
 
+// Compact file type row for vertical list
+struct CompactFileTypeRow: View {
+    let fileType: FileType
+    @ObservedObject var vacManager: VacManager
+    @State private var isHovered = false
+    @State private var toggleScale: CGFloat = 1.0
+    
+    // Vibrant colors for each file type
+    var accentColor: Color {
+        switch fileType.name {
+        case "Screenshots":
+            return Color(red: 1.0, green: 0.5, blue: 0.3)
+        case "Documents":
+            return Color(red: 0.3, green: 0.5, blue: 1.0)
+        case "Media":
+            return Color(red: 0.2, green: 0.8, blue: 0.5)
+        case "Archives":
+            return Color(red: 0.8, green: 0.3, blue: 0.8)
+        default:
+            return Color.gray
+        }
+    }
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(fileType.isEnabled ? 
+                        LinearGradient(colors: [accentColor, accentColor.opacity(0.7)],
+                                     startPoint: .topLeading,
+                                     endPoint: .bottomTrailing) :
+                        LinearGradient(colors: [Color.gray.opacity(0.2)],
+                                     startPoint: .topLeading,
+                                     endPoint: .bottomTrailing))
+                    .frame(width: 42, height: 42)
+                
+                Image(systemName: fileType.icon)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.white)
+                    .scaleEffect(isHovered ? 1.1 : 1.0)
+            }
+            
+            // Text content
+            VStack(alignment: .leading, spacing: 3) {
+                Text(fileType.name)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(fileType.isEnabled ? .primary : .secondary)
+                
+                Text(fileType.extensions.prefix(4).joined(separator: ", "))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+            
+            Spacer()
+            
+            // Toggle
+            Toggle("", isOn: Binding(
+                get: { fileType.isEnabled },
+                set: { newValue in
+                    withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                        toggleScale = 1.3
+                    }
+                    vacManager.toggleFileType(fileType, enabled: newValue)
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            toggleScale = 1.0
+                        }
+                    }
+                }
+            ))
+            .toggleStyle(SwitchToggleStyle(tint: accentColor))
+            .labelsHidden()
+            .scaleEffect(toggleScale * 0.9)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(isHovered ? 
+                    Color(NSColor.controlBackgroundColor).opacity(0.6) :
+                    Color(NSColor.controlBackgroundColor).opacity(0.3))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(fileType.isEnabled && isHovered ? 
+                            accentColor.opacity(0.3) : 
+                            Color.clear, lineWidth: 1.5)
+                )
+        )
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
+// Enhanced file type card with better colors
+struct EnhancedFileTypeCard: View {
+    let fileType: FileType
+    @ObservedObject var vacManager: VacManager
+    @State private var isHovered = false
+    
+    // Vibrant colors for each file type
+    var accentGradient: LinearGradient {
+        let colors: [Color]
+        switch fileType.name {
+        case "Screenshots":
+            colors = [Color(red: 1.0, green: 0.5, blue: 0.3), 
+                     Color(red: 1.0, green: 0.3, blue: 0.5)]
+        case "Documents":
+            colors = [Color(red: 0.3, green: 0.5, blue: 1.0), 
+                     Color(red: 0.5, green: 0.3, blue: 1.0)]
+        case "Media":
+            colors = [Color(red: 0.2, green: 0.8, blue: 0.5), 
+                     Color(red: 0.3, green: 0.9, blue: 0.4)]
+        case "Archives":
+            colors = [Color(red: 0.8, green: 0.3, blue: 0.8), 
+                     Color(red: 0.9, green: 0.4, blue: 0.6)]
+        default:
+            colors = [Color.gray]
+        }
+        return LinearGradient(colors: colors,
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing)
+    }
+    
+    var disabledGradient: LinearGradient {
+        LinearGradient(colors: [Color.gray.opacity(0.2)],
+                      startPoint: .topLeading,
+                      endPoint: .bottomTrailing)
+    }
+    
+    @ViewBuilder
+    var iconView: some View {
+        ZStack {
+            Circle()
+                .fill(fileType.isEnabled ? accentGradient : disabledGradient)
+                .frame(width: 48, height: 48)
+            
+            Image(systemName: fileType.icon)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(.white)
+                .scaleEffect(isHovered ? 1.15 : 1.0)
+        }
+    }
+    
+    @ViewBuilder
+    var statusIndicator: some View {
+        Circle()
+            .fill(fileType.isEnabled ? Color.green : Color.gray.opacity(0.3))
+            .frame(width: 8, height: 8)
+    }
+    
+    var body: some View {
+        Button(action: {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                vacManager.toggleFileType(fileType, enabled: !fileType.isEnabled)
+            }
+        }) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    iconView
+                    Spacer()
+                    statusIndicator
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(fileType.name)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(fileType.isEnabled ? .primary : .secondary)
+                    
+                    Text(fileType.extensions.prefix(3).joined(separator: ", "))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(fileType.isEnabled ? 
+                        Color(NSColor.controlBackgroundColor).opacity(0.9) :
+                        Color(NSColor.controlBackgroundColor).opacity(0.3))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(fileType.isEnabled && isHovered ? 
+                                Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.4) : 
+                                Color.clear, lineWidth: 2)
+                    )
+            )
+            .scaleEffect(isHovered ? 1.03 : 1.0)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
+
+// New helper components for enhanced preferences
+
+// Folder toggle row for source selection
+struct FolderToggleRow: View {
+    let title: String
+    let path: String
+    let icon: String
+    @Binding var isEnabled: Bool
+    let accentColor: Color
+    @State private var isHovered = false
+    
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(isEnabled ? 
+                    LinearGradient(colors: [accentColor, accentColor.opacity(0.7)],
+                                 startPoint: .topLeading,
+                                 endPoint: .bottomTrailing) :
+                    LinearGradient(colors: [Color.gray.opacity(0.4)],
+                                 startPoint: .topLeading,
+                                 endPoint: .bottomTrailing))
+                .frame(width: 28)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(isEnabled ? .primary : .secondary)
+                Text(path)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Toggle("", isOn: $isEnabled)
+                .toggleStyle(SwitchToggleStyle(tint: accentColor))
+                .labelsHidden()
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(isHovered ? 
+                    Color(NSColor.controlBackgroundColor).opacity(0.6) :
+                    Color(NSColor.controlBackgroundColor).opacity(0.3))
+        )
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
+// Smart destination row for file type mapping
+struct SmartDestinationRow: View {
+    let fileType: FileType
+    @ObservedObject var vacManager: VacManager
+    @State private var isHovered = false
+    
+    var accentColor: Color {
+        switch fileType.name {
+        case "Screenshots": return Color(red: 1.0, green: 0.5, blue: 0.3)
+        case "Documents": return Color(red: 0.3, green: 0.5, blue: 1.0)
+        case "Media": return Color(red: 0.2, green: 0.8, blue: 0.5)
+        case "Archives": return Color(red: 0.8, green: 0.3, blue: 0.8)
+        default: return Color.gray
+        }
+    }
+    
+    var destinationText: String {
+        switch fileType.destination {
+        case .daily: return "Daily"
+        case .weekly: return "Weekly"
+        case .monthly: return "Monthly"
+        case .typeFolder: return fileType.name
+        case .custom: return fileType.customDestination?.lastPathComponent ?? "Custom"
+        case .skip: return "Skip"
+        }
+    }
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: fileType.icon)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(accentColor)
+                .frame(width: 20)
+            
+            Text(fileType.name)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.primary)
+                .frame(width: 80, alignment: .leading)
+            
+            Image(systemName: "arrow.right")
+                .font(.system(size: 10))
+                .foregroundColor(.secondary.opacity(0.5))
+            
+            Text(destinationText)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            Button("Change") {
+                // TODO: Show destination picker
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 11))
+            .foregroundColor(accentColor)
+            .opacity(isHovered ? 1.0 : 0.0)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isHovered ? 
+                    Color(NSColor.controlBackgroundColor).opacity(0.5) :
+                    Color.clear)
+        )
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
+// Schedule toggle row
+struct ScheduleToggleRow: View {
+    let title: String
+    let description: String
+    let icon: String
+    @Binding var isEnabled: Bool
+    let accentColor: Color
+    @State private var isHovered = false
+    
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(isEnabled ? accentColor : Color.gray)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(isEnabled ? .primary : .secondary)
+                Text(description)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Toggle("", isOn: $isEnabled)
+                .toggleStyle(SwitchToggleStyle(tint: accentColor))
+                .labelsHidden()
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(isHovered ? 
+                    Color(NSColor.controlBackgroundColor).opacity(0.6) :
+                    Color(NSColor.controlBackgroundColor).opacity(0.3))
+        )
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
+// Day selector button
+struct DayButton: View {
+    let day: String
+    let isSelected: Bool
+    let action: () -> Void
+    @State private var isHovered = false
+    
+    var body: some View {
+        Button(action: action) {
+            Text(day)
+                .font(.system(size: 12, weight: isSelected ? .bold : .medium))
+                .foregroundColor(isSelected ? .white : .secondary)
+                .frame(width: 36, height: 36)
+                .background(
+                    Circle()
+                        .fill(isSelected ? 
+                            LinearGradient(colors: [Color(red: 1.0, green: 0.5, blue: 0.3), 
+                                                   Color(red: 1.0, green: 0.3, blue: 0.5)],
+                                         startPoint: .topLeading,
+                                         endPoint: .bottomTrailing) :
+                            LinearGradient(colors: [Color.gray.opacity(0.1)],
+                                         startPoint: .topLeading,
+                                         endPoint: .bottomTrailing))
+                )
+                .scaleEffect(isHovered ? 1.1 : 1.0)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
+// Enhanced stat box
+struct EnhancedStatBox: View {
+    let icon: String
+    let value: String
+    let label: String
+    let color: Color
+    @State private var isHovered = false
+    
+    var body: some View {
+        VStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(LinearGradient(colors: [color.opacity(0.2), color.opacity(0.1)],
+                                       startPoint: .topLeading,
+                                       endPoint: .bottomTrailing))
+                    .frame(width: 44, height: 44)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 20))
+                    .foregroundStyle(LinearGradient(colors: [color, color.opacity(0.7)],
+                                                  startPoint: .topLeading,
+                                                  endPoint: .bottomTrailing))
+                    .scaleEffect(isHovered ? 1.15 : 1.0)
+            }
+            
+            VStack(spacing: 2) {
+                Text(value)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.primary)
+                
+                Text(label)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(NSColor.controlBackgroundColor).opacity(0.3))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(isHovered ? color.opacity(0.3) : Color.clear, lineWidth: 1)
+                )
+        )
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
 
 struct CustomDestinationRow: View {
     let fileType: FileType

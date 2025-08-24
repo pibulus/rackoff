@@ -8,6 +8,9 @@ struct ContentView: View {
     @State private var hoveredRow: UUID? = nil
     @State private var buttonHovered = false
     @State private var gearHovered = false
+    @State private var gearScale: CGFloat = 1.0
+    @State private var exitHovered = false
+    @State private var exitScale: CGFloat = 1.0
     @State private var showSuccess = false
     @State private var showError = false
     @State private var errorMessage = ""
@@ -29,16 +32,29 @@ struct ContentView: View {
     // Use consistent brand colors
     
     var body: some View {
-        VStack(spacing: 28) {
+        VStack(spacing: 20) {
             // Header with settings and exit buttons
             HStack {
                 Button(action: {
+                    // Tactile click animation
+                    withAnimation(.spring(response: 0.15, dampingFraction: 0.4)) {
+                        gearScale = 1.3
+                    }
+                    
+                    // Post notification
                     NotificationCenter.default.post(name: Notification.Name("ShowPreferences"), object: nil)
+                    
+                    // Reset scale
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                            gearScale = 1.0
+                        }
+                    }
                 }) {
                     Image(systemName: "gearshape.fill")
                         .font(.system(size: 18, weight: .medium))
                         .foregroundColor(gearHovered ? Color(red: 1.0, green: 0.5, blue: 0.3) : Color.secondary)
-                        .scaleEffect(gearHovered ? 1.1 : 1.0)
+                        .scaleEffect(gearScale * (gearHovered ? 1.1 : 1.0))
                         .rotationEffect(.degrees(gearHovered ? 15 : 0))
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -69,20 +85,38 @@ struct ContentView: View {
                 Spacer()
                 
                 Button(action: {
-                    NSApplication.shared.terminate(nil)
+                    // Tactile click animation
+                    withAnimation(.spring(response: 0.15, dampingFraction: 0.4)) {
+                        exitScale = 0.7
+                    }
+                    
+                    // Brief delay then quit
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        NSApplication.shared.terminate(nil)
+                    }
                 }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.secondary)
-                        .opacity(0.7)
+                        .foregroundColor(exitHovered ? Color.red.opacity(0.8) : Color.secondary)
+                        .opacity(exitHovered ? 1.0 : 0.7)
+                        .scaleEffect(exitScale * (exitHovered ? 1.15 : 1.0))
+                        .rotationEffect(.degrees(exitHovered ? 90 : 0))
                 }
                 .buttonStyle(PlainButtonStyle())
+                .onHover { hovering in
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        exitHovered = hovering
+                        if !hovering {
+                            exitScale = 1.0
+                        }
+                    }
+                }
                 .help("Quit RackOff")
             }
             .padding(.horizontal, 4)
             
             // File type toggles with more space
-            LazyVStack(spacing: 6) {
+            LazyVStack(spacing: 8) {
                 ForEach(vacManager.fileTypes) { fileType in
                     FileTypeRow(
                         fileType: fileType,
@@ -97,9 +131,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .padding(.vertical, 12)
-            
-            Spacer(minLength: 16)
+            .padding(.vertical, 8)
             
             // Organization mode picker - cleaner
             HStack(spacing: 6) {
@@ -227,8 +259,8 @@ struct ContentView: View {
             }
         }
         .padding(.horizontal, RackOffSpacing.popoverPadding)
-        .padding(.top, 24)
-        .padding(.bottom, RackOffSpacing.extraLarge)
+        .padding(.top, 36)
+        .padding(.bottom, 28)
         .frame(width: RackOffSizes.popoverWidth, height: RackOffSizes.popoverHeight)
     }
     
@@ -328,6 +360,8 @@ struct FileTypeRow: View {
     @ObservedObject var vacManager: VacManager
     let isHovered: Bool
     let organizationMode: OrganizationMode
+    @State private var toggleScale: CGFloat = 1.0
+    @State private var showingMenu = false
     
     // Color per file type
     var accentColor: Color {
@@ -369,40 +403,98 @@ struct FileTypeRow: View {
         }
     }
     
-    var body: some View {
-        HStack {
-            Image(systemName: fileType.icon)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(fileType.isEnabled ? accentColor : .secondary)
-                .frame(width: 24)
-                .scaleEffect(isHovered ? 1.1 : 1.0)
-                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isHovered)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(fileType.name)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(fileType.isEnabled ? .primary : .secondary)
-                
-                if let destinationText = destinationText, fileType.isEnabled {
-                    Text(destinationText)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(accentColor.opacity(0.8))
+    @ViewBuilder
+    var contextMenuContent: some View {
+        if organizationMode == .smartClean {
+            Section("Send \(fileType.name) to:") {
+                Button("Daily folders") {
+                    vacManager.updateFileTypeDestination(fileType, destination: .daily)
+                }
+                Button("Weekly folders") {
+                    vacManager.updateFileTypeDestination(fileType, destination: .weekly)
+                }
+                Button("Monthly folders") {
+                    vacManager.updateFileTypeDestination(fileType, destination: .monthly)
+                }
+                Button("\(fileType.name) folder") {
+                    vacManager.updateFileTypeDestination(fileType, destination: .typeFolder)
+                }
+                Button("Custom folder...") {
+                    vacManager.updateFileTypeDestination(fileType, destination: .custom)
+                    // Note: User needs to set custom destination in Preferences
                 }
             }
             
-            Spacer()
+            Section {
+                Button("Skip this type") {
+                    vacManager.updateFileTypeDestination(fileType, destination: .skip)
+                }
+            }
+        }
+    }
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            // Main content area - clickable for menu
+            HStack {
+                Image(systemName: fileType.icon)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(fileType.isEnabled ? accentColor : .secondary)
+                    .frame(width: 24)
+                    .scaleEffect(isHovered ? 1.1 : 1.0)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isHovered)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(fileType.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(fileType.isEnabled ? .primary : .secondary)
+                    
+                    if let destinationText = destinationText, fileType.isEnabled {
+                        Text(destinationText)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(accentColor.opacity(0.8))
+                    }
+                }
+                
+                Spacer()
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if organizationMode == .smartClean {
+                    showingMenu = true
+                }
+            }
+            .contextMenu(menuItems: {
+                contextMenuContent
+            })
             
+            // Toggle area - separate hit target with satisfying animation
             Toggle("", isOn: Binding(
                 get: { fileType.isEnabled },
-                set: { vacManager.toggleFileType(fileType, enabled: $0) }
+                set: { newValue in
+                    // Trigger satisfying animation
+                    withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                        toggleScale = 1.3
+                    }
+                    vacManager.toggleFileType(fileType, enabled: newValue)
+                    
+                    // Reset scale
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            toggleScale = 1.0
+                        }
+                    }
+                }
             ))
             .toggleStyle(SwitchToggleStyle(tint: accentColor))
             .labelsHidden()
             .accessibilityLabel("Enable \(fileType.name) cleaning")
-            .scaleEffect(0.85)
+            .scaleEffect(toggleScale * 0.85)
+            .padding(.trailing, 8)
         }
-        .padding(.vertical, 14)
-        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .padding(.leading, 16)
+        .padding(.trailing, 8)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(isHovered ? 
@@ -411,38 +503,5 @@ struct FileTypeRow: View {
                 )
         )
         .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(RackOffAnimations.quickSpring) {
-                vacManager.toggleFileType(fileType, enabled: !fileType.isEnabled)
-            }
-        }
-        .contextMenu {
-            if organizationMode == .smartClean {
-                Section("Send \(fileType.name) to:") {
-                    Button("Daily folders") {
-                        vacManager.updateFileTypeDestination(fileType, destination: .daily)
-                    }
-                    Button("Weekly folders") {
-                        vacManager.updateFileTypeDestination(fileType, destination: .weekly)
-                    }
-                    Button("Monthly folders") {
-                        vacManager.updateFileTypeDestination(fileType, destination: .monthly)
-                    }
-                    Button("\(fileType.name) folder") {
-                        vacManager.updateFileTypeDestination(fileType, destination: .typeFolder)
-                    }
-                    Button("Custom folder...") {
-                        vacManager.updateFileTypeDestination(fileType, destination: .custom)
-                        // Note: User needs to set custom destination in Preferences
-                    }
-                }
-                
-                Section {
-                    Button("Skip this type") {
-                        vacManager.updateFileTypeDestination(fileType, destination: .skip)
-                    }
-                }
-            }
-        }
     }
 }
