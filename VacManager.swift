@@ -123,7 +123,13 @@ class VacManager: ObservableObject {
         ensureDocumentsAccess()
 
         // Create archive folder if needed
-        try? FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
+        do {
+            try FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
+        } catch {
+            NSLog("❌ ERROR: Failed to create archive folder at \(destinationFolder.path): \(error.localizedDescription)")
+            // Send notification about the error
+            sendNotification(title: "Archive Setup Failed", body: "Unable to create archive folder. Please check folder permissions.")
+        }
 
         // Request notification permissions
         requestNotificationPermissions()
@@ -150,10 +156,8 @@ class VacManager: ObservableObject {
         
         switch schedule {
         case .manual:
-            // FOR TESTING: Also run on manual for debugging
-            Task {
-                let _ = await vacuum()
-            }
+            // Manual mode - only clean when user clicks button
+            break
 
         case .onLaunch:
             // Run immediately on launch
@@ -580,65 +584,81 @@ class VacManager: ObservableObject {
     private func requestNotificationPermissions() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
             if let error = error {
-                print("Notification permission error: \(error)")
+                NSLog("❌ ERROR: Notification permission error: \(error.localizedDescription)")
+            } else if granted {
+                NSLog("✅ SUCCESS: Notification permissions granted")
+            } else {
+                NSLog("⚠️ WARNING: Notification permissions denied")
+            }
+        }
+    }
+
+    private func sendNotification(title: String, body: String, subtitle: String? = nil) {
+        // Check if we have permission to send notifications
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized else {
+                NSLog("⚠️ WARNING: Notification permission not granted, cannot send notification: \(title)")
+                return
+            }
+
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            if let subtitle = subtitle {
+                content.subtitle = subtitle
+            }
+            content.sound = .default
+
+            let request = UNNotificationRequest(
+                identifier: UUID().uuidString,
+                content: content,
+                trigger: nil
+            )
+
+            UNUserNotificationCenter.current().add(request) { error in
+                if let error = error {
+                    NSLog("❌ ERROR: Failed to send notification: \(error.localizedDescription)")
+                }
             }
         }
     }
     
     private func showNotification(filesVacuumed count: Int, errors: [String] = []) {
-        let content = UNMutableNotificationContent()
-        content.title = "RackOff Complete"
-        
+        let title = "RackOff Complete"
+        let subtitle: String?
+        let body: String
+
         if !errors.isEmpty {
-            content.body = "Moved \(count) file\(count == 1 ? "" : "s") with \(errors.count) error\(errors.count == 1 ? "" : "s")"
-            content.subtitle = "Some files couldn't be moved"
+            body = "Moved \(count) file\(count == 1 ? "" : "s") with \(errors.count) error\(errors.count == 1 ? "" : "s")"
+            subtitle = "Some files couldn't be moved"
         } else if count > 0 {
-            content.body = "Racked off \(count) file\(count == 1 ? "" : "s") to archive"
+            body = "Racked off \(count) file\(count == 1 ? "" : "s") to archive"
+            subtitle = nil
         } else {
-            content.body = "Desktop already clean"
+            body = "Desktop already clean"
+            subtitle = nil
         }
-        
-        content.sound = .default
-        
-        let request = UNNotificationRequest(
-            identifier: UUID().uuidString, // Unique ID to allow multiple notifications
-            content: content,
-            trigger: nil // Show immediately
-        )
-        
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("Failed to show notification: \(error)")
-            }
-        }
+
+        sendNotification(title: title, body: body, subtitle: subtitle)
     }
     
     private func showUndoNotification(filesRestored count: Int, errors: [String] = []) {
-        let content = UNMutableNotificationContent()
-        content.title = "Undo Complete"
-        
+        let title = "Undo Complete"
+        let subtitle: String?
+        let body: String
+
         if !errors.isEmpty {
-            content.body = "Restored \(count) file\(count == 1 ? "" : "s") with \(errors.count) error\(errors.count == 1 ? "" : "s")"
-            content.subtitle = "Some files couldn't be restored"
+            body = "Restored \(count) file\(count == 1 ? "" : "s") with \(errors.count) error\(errors.count == 1 ? "" : "s")"
+            subtitle = "Some files couldn't be restored"
         } else if count > 0 {
-            content.body = "Restored \(count) file\(count == 1 ? "" : "s") to desktop"
+            body = "Restored \(count) file\(count == 1 ? "" : "s") to desktop"
+            subtitle = nil
         } else {
-            content.body = "Nothing to undo"
+            body = "Nothing to undo"
+            subtitle = nil
         }
-        
-        content.sound = .default
-        
-        let request = UNNotificationRequest(
-            identifier: UUID().uuidString,
-            content: content,
-            trigger: nil
-        )
-        
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("Failed to show undo notification: \(error)")
-            }
-        }
+
+        sendNotification(title: title, body: body, subtitle: subtitle)
     }
     
     private func loadPreferences() {
@@ -803,13 +823,17 @@ class VacManager: ObservableObject {
         do {
             let bookmarkData = try url.bookmarkData(options: .withSecurityScope)
             UserDefaults.standard.set(bookmarkData, forKey: "desktopBookmark")
+            NSLog("✅ SUCCESS: Desktop bookmark saved for \(url.path)")
         } catch {
-            print("Failed to save desktop bookmark: \(error.localizedDescription)")
+            NSLog("❌ ERROR: Failed to save desktop bookmark: \(error.localizedDescription)")
+            sendNotification(title: "Desktop Access Error",
+                           body: "Unable to save desktop access permissions. You may need to grant access again next time.")
         }
     }
 
     private func loadDesktopBookmark() -> URL? {
         guard let bookmarkData = UserDefaults.standard.data(forKey: "desktopBookmark") else {
+            NSLog("⚠️ WARNING: No desktop bookmark found in UserDefaults")
             return nil
         }
 
@@ -817,11 +841,24 @@ class VacManager: ObservableObject {
             var isStale = false
             let url = try URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
 
-            if !isStale && url.startAccessingSecurityScopedResource() {
+            if isStale {
+                NSLog("⚠️ WARNING: Desktop bookmark is stale, requesting new access")
+                sendNotification(title: "Desktop Access Expired",
+                               body: "Desktop access permissions have expired. Please grant access again.")
+                return nil
+            }
+
+            if url.startAccessingSecurityScopedResource() {
+                NSLog("✅ SUCCESS: Desktop bookmark resolved for \(url.path)")
                 return url
+            } else {
+                NSLog("❌ ERROR: Failed to start accessing security scoped resource for desktop")
+                return nil
             }
         } catch {
-            print("Failed to resolve desktop bookmark: \(error.localizedDescription)")
+            NSLog("❌ ERROR: Failed to resolve desktop bookmark: \(error.localizedDescription)")
+            sendNotification(title: "Desktop Access Error",
+                           body: "Unable to restore desktop access permissions. Please grant access again.")
         }
 
         return nil
@@ -876,13 +913,17 @@ class VacManager: ObservableObject {
         do {
             let bookmarkData = try url.bookmarkData(options: .withSecurityScope)
             UserDefaults.standard.set(bookmarkData, forKey: "documentsBookmark")
+            NSLog("✅ SUCCESS: Documents bookmark saved for \(url.path)")
         } catch {
-            print("Failed to save documents bookmark: \(error.localizedDescription)")
+            NSLog("❌ ERROR: Failed to save documents bookmark: \(error.localizedDescription)")
+            sendNotification(title: "Documents Access Error",
+                           body: "Unable to save Documents access permissions. You may need to grant access again next time.")
         }
     }
 
     private func loadDocumentsBookmark() -> URL? {
         guard let bookmarkData = UserDefaults.standard.data(forKey: "documentsBookmark") else {
+            NSLog("⚠️ WARNING: No documents bookmark found in UserDefaults")
             return nil
         }
 
@@ -890,11 +931,25 @@ class VacManager: ObservableObject {
             var isStale = false
             let url = try URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
 
-            if !isStale && url.startAccessingSecurityScopedResource() {
-                return url.appendingPathComponent("Archive")
+            if isStale {
+                NSLog("⚠️ WARNING: Documents bookmark is stale, requesting new access")
+                sendNotification(title: "Documents Access Expired",
+                               body: "Documents access permissions have expired. Please grant access again.")
+                return nil
+            }
+
+            if url.startAccessingSecurityScopedResource() {
+                let archiveURL = url.appendingPathComponent("Archive")
+                NSLog("✅ SUCCESS: Documents bookmark resolved for \(archiveURL.path)")
+                return archiveURL
+            } else {
+                NSLog("❌ ERROR: Failed to start accessing security scoped resource for documents")
+                return nil
             }
         } catch {
-            print("Failed to resolve documents bookmark: \(error.localizedDescription)")
+            NSLog("❌ ERROR: Failed to resolve documents bookmark: \(error.localizedDescription)")
+            sendNotification(title: "Documents Access Error",
+                           body: "Unable to restore Documents access permissions. Please grant access again.")
         }
 
         return nil
