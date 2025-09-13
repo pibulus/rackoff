@@ -95,7 +95,7 @@ class VacManager: ObservableObject {
     ]
     
     @Published var sourceFolder: URL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Desktop")
-    @Published var destinationFolder: URL = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Documents")).appendingPathComponent("Archive")
+    @Published var destinationFolder: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents").appendingPathComponent("Archive")
     @Published var schedule: Schedule = .manual
     @Published var organizationMode: OrganizationMode = .quickArchive
     @Published var lastRun: Date?
@@ -113,16 +113,25 @@ class VacManager: ObservableObject {
     
     // MARK: - Initialization
     init() {
+        NSLog("🔍 DEBUG: VacManager init() started")
         loadPreferences()
-        
+
+        // Ensure we have proper desktop access for sandbox
+        ensureDesktopAccess()
+
+        // Ensure we have proper documents access for sandbox
+        ensureDocumentsAccess()
+
         // Create archive folder if needed
         try? FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
-        
+
         // Request notification permissions
         requestNotificationPermissions()
-        
+
+        NSLog("🔍 DEBUG: About to setup scheduling with schedule: \(schedule)")
         // Setup scheduling
         setupScheduling()
+        NSLog("🔍 DEBUG: VacManager init() completed")
     }
     
     deinit {
@@ -141,9 +150,11 @@ class VacManager: ObservableObject {
         
         switch schedule {
         case .manual:
-            // No automatic scheduling
-            break
-            
+            // FOR TESTING: Also run on manual for debugging
+            Task {
+                let _ = await vacuum()
+            }
+
         case .onLaunch:
             // Run immediately on launch
             Task {
@@ -286,6 +297,7 @@ class VacManager: ObservableObject {
     }
     
     func vacuum() async -> (movedCount: Int, totalBytes: Int64, errors: [String]) {
+        NSLog("🔍 DEBUG: vacuum() called")
         await MainActor.run {
             isProcessing = true
         }
@@ -294,7 +306,11 @@ class VacManager: ObservableObject {
                 isProcessing = false
             }
         }
-        
+
+        NSLog("🔍 DEBUG: Source folder: \(sourceFolder.path)")
+        NSLog("🔍 DEBUG: Destination folder: \(destinationFolder.path)")
+        NSLog("🔍 DEBUG: Organization mode: \(organizationMode)")
+
         var movedCount = 0
         var totalBytes: Int64 = 0
         var errors: [String] = []
@@ -302,10 +318,16 @@ class VacManager: ObservableObject {
         
         // First, count total files to move
         var totalFiles = 0
-        for fileType in fileTypes.filter({ $0.isEnabled }) {
-            totalFiles += findFiles(ofType: fileType).count
+        let enabledFileTypes = fileTypes.filter({ $0.isEnabled })
+        NSLog("🔍 DEBUG: Enabled file types: \(enabledFileTypes.map { $0.name })")
+
+        for fileType in enabledFileTypes {
+            let files = findFiles(ofType: fileType)
+            NSLog("🔍 DEBUG: Looking for \(fileType.name) files in \(sourceFolder.path)")
+            NSLog("🔍 DEBUG: Found \(files.count) \(fileType.name) files: \(files.map { $0.lastPathComponent })")
+            totalFiles += files.count
         }
-        
+        NSLog("🔍 DEBUG: Total files to process: \(totalFiles)")
         await MainActor.run {
             currentProgress = (0, totalFiles)
         }
@@ -313,8 +335,10 @@ class VacManager: ObservableObject {
         // Process each enabled file type
         for fileType in fileTypes.filter({ $0.isEnabled }) {
             let files = findFiles(ofType: fileType)
-            
+            NSLog("🔍 DEBUG: Processing \(files.count) \(fileType.name) files")
+
             for file in files {
+                NSLog("🔍 DEBUG: Processing file: \(file.lastPathComponent)")
                 // Update progress
                 await MainActor.run {
                     currentProgress.current += 1
@@ -326,12 +350,15 @@ class VacManager: ObservableObject {
                 }
                 
                 let fileName = file.lastPathComponent
-                let destinationFolder = getDestinationFolder(for: fileType)
-                
+                let destinationFolder = getDestinationFolder(for: fileType, fileURL: file)
+                NSLog("🔍 DEBUG: Destination folder for \(fileName): \(destinationFolder.path)")
+
                 // Create destination folder if it doesn't exist
                 do {
                     try FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
+                    NSLog("🔍 DEBUG: Created/verified destination folder: \(destinationFolder.path)")
                 } catch {
+                    NSLog("🔍 DEBUG: Failed to create folder \(destinationFolder.path): \(error.localizedDescription)")
                     errors.append("Failed to create folder: \(error.localizedDescription)")
                     continue
                 }
@@ -351,22 +378,53 @@ class VacManager: ObservableObject {
                     } while FileManager.default.fileExists(atPath: destination.path) && counter < 100
                 }
                 
+                NSLog("🔍 DEBUG: Attempting to move \(file.path) to \(destination.path)")
+
+                // SAFETY CHECK: Verify source file exists
+                guard FileManager.default.fileExists(atPath: file.path) else {
+                    NSLog("🔍 DEBUG: ERROR - Source file doesn't exist: \(file.path)")
+                    errors.append("Source file not found: \(fileName)")
+                    continue
+                }
+
                 do {
-                    // Get file size before moving
+                    // Get file size and original creation date before moving
                     let fileAttributes = try FileManager.default.attributesOfItem(atPath: file.path)
                     let fileSize = fileAttributes[.size] as? Int64 ?? 0
-                    
+                    let originalCreationDate = fileAttributes[.creationDate] as? Date
+
+                    // Perform the move
                     try FileManager.default.moveItem(at: file, to: destination)
-                    movedCount += 1
-                    totalBytes += fileSize
-                    
-                    // Track for undo
-                    newUndoOperations.append(UndoOperation(
-                        source: file,
-                        destination: destination,
-                        timestamp: Date()
-                    ))
+
+                    // Restore original creation date if we captured it
+                    if let originalDate = originalCreationDate {
+                        do {
+                            try FileManager.default.setAttributes([.creationDate: originalDate], ofItemAtPath: destination.path)
+                            NSLog("🔍 DEBUG: Restored creation date for \(fileName) to \(originalDate)")
+                        } catch {
+                            NSLog("🔍 DEBUG: Failed to restore creation date for \(fileName): \(error.localizedDescription)")
+                        }
+                    }
+
+                    // SAFETY CHECK: Verify the move was successful
+                    if FileManager.default.fileExists(atPath: destination.path) {
+                        NSLog("🔍 DEBUG: ✅ Successfully moved \(fileName) to \(destination.path)")
+                        movedCount += 1
+                        totalBytes += fileSize
+
+                        // Track for undo
+                        newUndoOperations.append(UndoOperation(
+                            source: file,
+                            destination: destination,
+                            timestamp: Date()
+                        ))
+                    } else {
+                        NSLog("🔍 DEBUG: ❌ CRITICAL ERROR - Move reported success but destination file doesn't exist!")
+                        errors.append("File move verification failed for: \(fileName)")
+                    }
+
                 } catch {
+                    NSLog("🔍 DEBUG: ❌ Failed to move \(fileName): \(error.localizedDescription)")
                     errors.append("Failed to move \(file.lastPathComponent): \(error.localizedDescription)")
                 }
             }
@@ -388,14 +446,29 @@ class VacManager: ObservableObject {
         }
         return (movedCount, totalBytes, errors)
     }
-    
-    private func getDestinationFolder(for fileType: FileType) -> URL {
+
+    private func getFileDate(for fileURL: URL?) -> Date {
+        guard let fileURL = fileURL else { return Date() }
+
+        do {
+            let resourceValues = try fileURL.resourceValues(forKeys: [.creationDateKey])
+            return resourceValues.creationDate ?? Date()
+        } catch {
+            NSLog("🔍 DEBUG: Failed to get creation date for \(fileURL.lastPathComponent): \(error.localizedDescription)")
+            return Date()
+        }
+    }
+
+    private func getDestinationFolder(for fileType: FileType, fileURL: URL? = nil) -> URL {
+        // Get the date to use (file creation date if available, otherwise today)
+        let dateToUse = getFileDate(for: fileURL)
+
         switch organizationMode {
         case .quickArchive:
-            // Everything goes to daily folders (current behavior)
+            // Everything goes to daily folders based on file creation date
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd"
-            return destinationFolder.appendingPathComponent(dateFormatter.string(from: Date()))
+            return destinationFolder.appendingPathComponent(dateFormatter.string(from: dateToUse))
             
         case .sortByType:
             // Everything goes to type folders
@@ -407,17 +480,17 @@ class VacManager: ObservableObject {
             case .daily:
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-MM-dd"
-                return destinationFolder.appendingPathComponent(dateFormatter.string(from: Date()))
-                
+                return destinationFolder.appendingPathComponent(dateFormatter.string(from: dateToUse))
+
             case .weekly:
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-'W'ww"
-                return destinationFolder.appendingPathComponent(dateFormatter.string(from: Date()))
-                
+                return destinationFolder.appendingPathComponent(dateFormatter.string(from: dateToUse))
+
             case .monthly:
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-MM"
-                return destinationFolder.appendingPathComponent(dateFormatter.string(from: Date()))
+                return destinationFolder.appendingPathComponent(dateFormatter.string(from: dateToUse))
                 
             case .typeFolder:
                 return destinationFolder.appendingPathComponent(fileType.name)
@@ -437,25 +510,26 @@ class VacManager: ObservableObject {
     private func findFiles(ofType fileType: FileType) -> [URL] {
         var results: [URL] = []
         let fileManager = FileManager.default
-        
+
         do {
             let contents = try fileManager.contentsOfDirectory(at: sourceFolder, includingPropertiesForKeys: [.isRegularFileKey])
-            
+            NSLog("🔍 DEBUG: Directory contents count: \(contents.count)")
+
             for item in contents {
                 // Skip directories and hidden files
                 let resourceValues = try? item.resourceValues(forKeys: [.isRegularFileKey, .isHiddenKey])
                 guard let isRegularFile = resourceValues?.isRegularFile,
                       let isHidden = resourceValues?.isHidden,
                       isRegularFile && !isHidden else { continue }
-                
+
                 if matchesFileType(item, fileType: fileType) {
                     results.append(item)
                 }
             }
         } catch {
-            print("Error reading directory \(sourceFolder.path): \(error.localizedDescription)")
+            NSLog("🔍 DEBUG: Error reading directory \(sourceFolder.path): \(error.localizedDescription)")
         }
-        
+
         return results
     }
     
@@ -579,12 +653,26 @@ class VacManager: ObservableObject {
             self.organizationMode = orgMode
         }
         
-        if let sourceURL = UserDefaults.standard.url(forKey: "sourceFolder") {
+        // Try to load from saved bookmark first (for sandbox)
+        if let bookmarkURL = loadDesktopBookmark() {
+            self.sourceFolder = bookmarkURL
+        } else if let sourceURL = UserDefaults.standard.url(forKey: "sourceFolder") {
             self.sourceFolder = sourceURL
+        } else if let sourcePath = UserDefaults.standard.string(forKey: "sourceFolder") {
+            // Handle legacy string paths (with ~ expansion)
+            let expandedPath = NSString(string: sourcePath).expandingTildeInPath
+            self.sourceFolder = URL(fileURLWithPath: expandedPath)
         }
-        
-        if let destURL = UserDefaults.standard.url(forKey: "destinationFolder") {
+
+        // Try to load from saved bookmark first (for sandbox)
+        if let bookmarkURL = loadDocumentsBookmark() {
+            self.destinationFolder = bookmarkURL
+        } else if let destURL = UserDefaults.standard.url(forKey: "destinationFolder") {
             self.destinationFolder = destURL
+        } else if let destPath = UserDefaults.standard.string(forKey: "destinationFolder") {
+            // Handle legacy string paths (with ~ expansion)
+            let expandedPath = NSString(string: destPath).expandingTildeInPath
+            self.destinationFolder = URL(fileURLWithPath: expandedPath)
         }
         
         if let lastRunDate = UserDefaults.standard.object(forKey: "lastRun") as? Date {
@@ -658,12 +746,157 @@ class VacManager: ObservableObject {
     private func debouncedSave() {
         // Cancel existing timer
         saveTimer?.invalidate()
-        
+
         // Start new timer - save after 500ms of inactivity
         saveTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 self?.savePreferences()
             }
         }
+    }
+
+    // MARK: - Sandbox Desktop Access
+    private func ensureDesktopAccess() {
+        // Try to access the real desktop first
+        let realDesktop = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
+
+        // Check if we can access it
+        if FileManager.default.isReadableFile(atPath: realDesktop.path) {
+            // Try to read it to verify sandbox permissions
+            do {
+                let _ = try FileManager.default.contentsOfDirectory(at: realDesktop, includingPropertiesForKeys: nil)
+
+                // Update sourceFolder to the real desktop
+                sourceFolder = realDesktop
+
+                // Save the bookmark for persistence
+                saveDesktopBookmark(for: realDesktop)
+
+            } catch {
+                // Fall back to requesting access
+                requestDesktopAccess()
+            }
+        } else {
+            requestDesktopAccess()
+        }
+    }
+
+    private func requestDesktopAccess() {
+        DispatchQueue.main.async { [weak self] in
+            let panel = NSOpenPanel()
+            panel.message = "RackOff needs access to your Desktop to clean files"
+            panel.prompt = "Grant Access"
+            panel.allowsMultipleSelection = false
+            panel.canChooseFiles = false
+            panel.canChooseDirectories = true
+            panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
+
+            let result = panel.runModal()
+            if result == .OK, let url = panel.url {
+                self?.sourceFolder = url
+                self?.saveDesktopBookmark(for: url)
+            }
+        }
+    }
+
+    private func saveDesktopBookmark(for url: URL) {
+        do {
+            let bookmarkData = try url.bookmarkData(options: .withSecurityScope)
+            UserDefaults.standard.set(bookmarkData, forKey: "desktopBookmark")
+        } catch {
+            print("Failed to save desktop bookmark: \(error.localizedDescription)")
+        }
+    }
+
+    private func loadDesktopBookmark() -> URL? {
+        guard let bookmarkData = UserDefaults.standard.data(forKey: "desktopBookmark") else {
+            return nil
+        }
+
+        do {
+            var isStale = false
+            let url = try URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
+
+            if !isStale && url.startAccessingSecurityScopedResource() {
+                return url
+            }
+        } catch {
+            print("Failed to resolve desktop bookmark: \(error.localizedDescription)")
+        }
+
+        return nil
+    }
+
+    // MARK: - Sandbox Documents Access
+    private func ensureDocumentsAccess() {
+        // Try to access the real Documents folder first
+        let realDocuments = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents")
+        let archiveFolder = realDocuments.appendingPathComponent("Archive")
+
+        // Check if we can access it
+        if FileManager.default.isReadableFile(atPath: realDocuments.path) {
+            // Try to read it to verify sandbox permissions
+            do {
+                let _ = try FileManager.default.contentsOfDirectory(at: realDocuments, includingPropertiesForKeys: nil)
+
+                // Update destinationFolder to the real documents
+                destinationFolder = archiveFolder
+
+                // Save the bookmark for persistence
+                saveDocumentsBookmark(for: realDocuments)
+
+            } catch {
+                // Fall back to requesting access
+                requestDocumentsAccess()
+            }
+        } else {
+            requestDocumentsAccess()
+        }
+    }
+
+    private func requestDocumentsAccess() {
+        DispatchQueue.main.async { [weak self] in
+            let panel = NSOpenPanel()
+            panel.message = "RackOff needs access to your Documents folder to store archived files"
+            panel.prompt = "Grant Access"
+            panel.allowsMultipleSelection = false
+            panel.canChooseFiles = false
+            panel.canChooseDirectories = true
+            panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents")
+
+            let result = panel.runModal()
+            if result == .OK, let url = panel.url {
+                self?.destinationFolder = url.appendingPathComponent("Archive")
+                self?.saveDocumentsBookmark(for: url)
+            }
+        }
+    }
+
+    private func saveDocumentsBookmark(for url: URL) {
+        do {
+            let bookmarkData = try url.bookmarkData(options: .withSecurityScope)
+            UserDefaults.standard.set(bookmarkData, forKey: "documentsBookmark")
+        } catch {
+            print("Failed to save documents bookmark: \(error.localizedDescription)")
+        }
+    }
+
+    private func loadDocumentsBookmark() -> URL? {
+        guard let bookmarkData = UserDefaults.standard.data(forKey: "documentsBookmark") else {
+            return nil
+        }
+
+        do {
+            var isStale = false
+            let url = try URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
+
+            if !isStale && url.startAccessingSecurityScopedResource() {
+                return url.appendingPathComponent("Archive")
+            }
+        } catch {
+            print("Failed to resolve documents bookmark: \(error.localizedDescription)")
+        }
+
+        return nil
     }
 }

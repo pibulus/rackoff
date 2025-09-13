@@ -5,7 +5,9 @@
       "Bash(rolldice:*)",
       "Bash(bash:*)",
       "Bash(git add:*)",
-      "Bash(./build.sh:*)"
+      "Bash(./build.sh:*)",
+      "Bash(defaults read:*)",
+      "Read(//Users/pabloalvarado/Documents/Archive/**)"
     ],
     "additionalDirectories": [
       "/Users/pabloalvarado/Desktop"

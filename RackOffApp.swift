@@ -91,18 +91,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var popover = NSPopover()
     var aboutPopover = NSPopover()
     var preferencesWindow: NSWindow?
-    var vacManager = VacManager() // Back to direct instantiation
+    lazy var vacManager: VacManager = {
+        NSLog("🔍 DEBUG: Creating VacManager in AppDelegate")
+        return VacManager()
+    }()
     var currentIconStyle: MenuIconStyle = .sparkles
     var isPressed: Bool = false
     var contextMenu: NSMenu!
     var undoMenuItem: NSMenuItem!
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSLog("🔍 DEBUG: App finished launching")
         // Load icon style preference
         if let savedStyle = UserDefaults.standard.string(forKey: "menuIconStyle"),
            let style = MenuIconStyle(rawValue: savedStyle) {
             currentIconStyle = style
         }
+        NSLog("🔍 DEBUG: VacManager will be created lazily when first accessed")
         
         // Listen for preferences notification
         NotificationCenter.default.addObserver(self, selector: #selector(showPreferences), name: Notification.Name("ShowPreferences"), object: nil)
