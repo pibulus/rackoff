@@ -358,11 +358,34 @@ class VacManager: ObservableObject {
                 NSLog("🔍 DEBUG: Destination folder for \(fileName): \(destinationFolder.path)")
 
                 // Create destination folder if it doesn't exist
+                let folderExisted = FileManager.default.fileExists(atPath: destinationFolder.path)
                 do {
                     try FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
-                    NSLog("🔍 DEBUG: Created/verified destination folder: \(destinationFolder.path)")
+                    if !folderExisted {
+                        NSLog("🔍 DEBUG: ✅ Created NEW destination folder: \(destinationFolder.path)")
+                        // Notify user that a new folder was created
+                        // Check notification permissions before sending
+                        let settings = await UNUserNotificationCenter.current().notificationSettings()
+                        if settings.authorizationStatus == .authorized {
+                            let folderName = destinationFolder.lastPathComponent
+                            let notification = UNMutableNotificationContent()
+                            notification.title = "📁 New Archive Folder"
+                            notification.body = "Created folder: \(folderName)"
+                            notification.sound = nil // Silent notification
+
+                            let request = UNNotificationRequest(
+                                identifier: "folder-created-\(folderName)",
+                                content: notification,
+                                trigger: nil
+                            )
+
+                            try? await UNUserNotificationCenter.current().add(request)
+                        }
+                    } else {
+                        NSLog("🔍 DEBUG: ✅ Verified existing destination folder: \(destinationFolder.path)")
+                    }
                 } catch {
-                    NSLog("🔍 DEBUG: Failed to create folder \(destinationFolder.path): \(error.localizedDescription)")
+                    NSLog("🔍 DEBUG: ❌ Failed to create folder \(destinationFolder.path): \(error.localizedDescription)")
                     errors.append("Failed to create folder: \(error.localizedDescription)")
                     continue
                 }
@@ -452,63 +475,90 @@ class VacManager: ObservableObject {
     }
 
     private func getFileDate(for fileURL: URL?) -> Date {
-        guard let fileURL = fileURL else { return Date() }
+        guard let fileURL = fileURL else {
+            NSLog("🔍 DEBUG: No fileURL provided, using current date")
+            return Date()
+        }
 
         do {
             let resourceValues = try fileURL.resourceValues(forKeys: [.creationDateKey])
-            return resourceValues.creationDate ?? Date()
+            let creationDate = resourceValues.creationDate ?? Date()
+            NSLog("🔍 DEBUG: File \(fileURL.lastPathComponent) creation date: \(creationDate)")
+            return creationDate
         } catch {
             NSLog("🔍 DEBUG: Failed to get creation date for \(fileURL.lastPathComponent): \(error.localizedDescription)")
-            return Date()
+            let fallbackDate = Date()
+            NSLog("🔍 DEBUG: Using fallback date: \(fallbackDate)")
+            return fallbackDate
         }
     }
 
     private func getDestinationFolder(for fileType: FileType, fileURL: URL? = nil) -> URL {
         // Get the date to use (file creation date if available, otherwise today)
         let dateToUse = getFileDate(for: fileURL)
+        NSLog("🔍 DEBUG: Determining destination folder for \(fileType.name) file: \(fileURL?.lastPathComponent ?? "unknown")")
+        NSLog("🔍 DEBUG: Organization mode: \(organizationMode), Date to use: \(dateToUse)")
+
+        let resultFolder: URL
 
         switch organizationMode {
         case .quickArchive:
             // Everything goes to daily folders based on file creation date
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd"
-            return destinationFolder.appendingPathComponent(dateFormatter.string(from: dateToUse))
-            
+            let dateString = dateFormatter.string(from: dateToUse)
+            resultFolder = destinationFolder.appendingPathComponent(dateString)
+            NSLog("🔍 DEBUG: Quick Archive mode - creating date folder: \(dateString)")
+
         case .sortByType:
             // Everything goes to type folders
-            return destinationFolder.appendingPathComponent(fileType.name)
-            
+            resultFolder = destinationFolder.appendingPathComponent(fileType.name)
+            NSLog("🔍 DEBUG: Sort by Type mode - using type folder: \(fileType.name)")
+
         case .smartClean:
             // Use per-file-type destination settings
+            NSLog("🔍 DEBUG: Smart Clean mode - file type destination: \(fileType.destination)")
             switch fileType.destination {
             case .daily:
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-MM-dd"
-                return destinationFolder.appendingPathComponent(dateFormatter.string(from: dateToUse))
+                let dateString = dateFormatter.string(from: dateToUse)
+                resultFolder = destinationFolder.appendingPathComponent(dateString)
+                NSLog("🔍 DEBUG: Daily destination - creating date folder: \(dateString)")
 
             case .weekly:
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-'W'ww"
-                return destinationFolder.appendingPathComponent(dateFormatter.string(from: dateToUse))
+                let dateString = dateFormatter.string(from: dateToUse)
+                resultFolder = destinationFolder.appendingPathComponent(dateString)
+                NSLog("🔍 DEBUG: Weekly destination - creating week folder: \(dateString)")
 
             case .monthly:
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-MM"
-                return destinationFolder.appendingPathComponent(dateFormatter.string(from: dateToUse))
-                
+                let dateString = dateFormatter.string(from: dateToUse)
+                resultFolder = destinationFolder.appendingPathComponent(dateString)
+                NSLog("🔍 DEBUG: Monthly destination - creating month folder: \(dateString)")
+
             case .typeFolder:
-                return destinationFolder.appendingPathComponent(fileType.name)
-                
+                resultFolder = destinationFolder.appendingPathComponent(fileType.name)
+                NSLog("🔍 DEBUG: Type folder destination - using: \(fileType.name)")
+
             case .custom:
                 // Use custom destination if set, otherwise fall back to type folder
-                return fileType.customDestination ?? destinationFolder.appendingPathComponent(fileType.name)
-                
+                resultFolder = fileType.customDestination ?? destinationFolder.appendingPathComponent(fileType.name)
+                NSLog("🔍 DEBUG: Custom destination: \(resultFolder.path)")
+
             case .skip:
                 // This case shouldn't happen since we filter enabled file types
                 // But return a safe default
-                return destinationFolder.appendingPathComponent(fileType.name)
+                resultFolder = destinationFolder.appendingPathComponent(fileType.name)
+                NSLog("🔍 DEBUG: Skip destination (fallback) - using: \(fileType.name)")
             }
         }
+
+        NSLog("🔍 DEBUG: Final destination folder: \(resultFolder.path)")
+        return resultFolder
     }
     
     private func findFiles(ofType fileType: FileType) -> [URL] {
@@ -539,24 +589,29 @@ class VacManager: ObservableObject {
     
     private func matchesFileType(_ url: URL, fileType: FileType) -> Bool {
         let filename = url.lastPathComponent.lowercased()
-        
+        NSLog("🔍 DEBUG: Checking if '\(url.lastPathComponent)' matches file type '\(fileType.name)'")
+
         switch fileType.matcher {
         case .byExtension:
             // Simple extension matching
-            return fileType.extensions.contains(where: { filename.hasSuffix($0) })
-            
+            let matches = fileType.extensions.contains(where: { filename.hasSuffix($0) })
+            NSLog("🔍 DEBUG: Extension matching for \(fileType.name): \(matches)")
+            return matches
+
         case .byFilenamePattern:
             // Match by filename pattern (e.g., screenshots)
             let patterns = getPatterns(for: fileType)
-            let hasPattern = patterns.contains(where: { filename.contains($0) })
+            let hasPattern = patterns.contains(where: { filename.contains($0.lowercased()) })
             let hasExtension = fileType.extensions.contains(where: { filename.hasSuffix($0) })
+            NSLog("🔍 DEBUG: Pattern matching for \(fileType.name): patterns=\(patterns), hasPattern=\(hasPattern), hasExtension=\(hasExtension)")
             return hasPattern && hasExtension
-            
+
         case .byExtensionExcludingPattern:
             // Match by extension but exclude certain patterns (e.g., media excluding screenshots)
             let hasExtension = fileType.extensions.contains(where: { filename.hasSuffix($0) })
             let excludePatterns = getExcludePatterns(for: fileType)
-            let hasExcludedPattern = excludePatterns.contains(where: { filename.contains($0) })
+            let hasExcludedPattern = excludePatterns.contains(where: { filename.contains($0.lowercased()) })
+            NSLog("🔍 DEBUG: Extension excluding pattern for \(fileType.name): hasExtension=\(hasExtension), hasExcludedPattern=\(hasExcludedPattern)")
             return hasExtension && !hasExcludedPattern
         }
     }
@@ -565,7 +620,7 @@ class VacManager: ObservableObject {
         // Define patterns for each file type that uses pattern matching
         switch fileType.name {
         case "Screenshots":
-            return ["screenshot", "screen shot", "screen recording", "screen capture"]
+            return ["screenshot", "screen shot", "screen recording", "screen capture", "Screenshot", "Screen Shot", "Screen Recording", "Screen Capture", "CleanShot"]
         default:
             return []
         }
@@ -575,7 +630,7 @@ class VacManager: ObservableObject {
         // Define patterns to exclude for each file type
         switch fileType.name {
         case "Media":
-            return ["screenshot", "screen shot", "screen recording", "screen capture"]
+            return ["screenshot", "screen shot", "screen recording", "screen capture", "Screenshot", "Screen Shot", "Screen Recording", "Screen Capture", "CleanShot"]
         default:
             return []
         }
