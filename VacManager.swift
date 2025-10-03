@@ -114,22 +114,13 @@ class VacManager: ObservableObject {
     // MARK: - Initialization
     init() {
         NSLog("🔍 DEBUG: VacManager init() started")
+
+        // Load preferences first (but don't trust the paths yet)
         loadPreferences()
 
-        // Ensure we have proper desktop access for sandbox
-        ensureDesktopAccess()
-
-        // Ensure we have proper documents access for sandbox
-        ensureDocumentsAccess()
-
-        // Create archive folder if needed
-        do {
-            try FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
-        } catch {
-            NSLog("❌ ERROR: Failed to create archive folder at \(destinationFolder.path): \(error.localizedDescription)")
-            // Send notification about the error
-            sendNotification(title: "Archive Setup Failed", body: "Unable to create archive folder. Please check folder permissions.")
-        }
+        // CRITICAL: Ensure we have proper access to real folders, not sandbox
+        // This MUST happen before any file operations
+        ensureRealFolderAccess()
 
         // Request notification permissions
         requestNotificationPermissions()
@@ -620,7 +611,18 @@ class VacManager: ObservableObject {
         // Define patterns for each file type that uses pattern matching
         switch fileType.name {
         case "Screenshots":
-            return ["screenshot", "screen shot", "screen recording", "screen capture", "Screenshot", "Screen Shot", "Screen Recording", "Screen Capture", "CleanShot"]
+            // Comprehensive list of screenshot patterns
+            // Including various macOS screenshot naming conventions
+            return [
+                "screenshot", "screen shot", "screen recording", "screen capture",
+                "Screenshot", "Screen Shot", "Screen Recording", "Screen Capture",
+                "CleanShot", "cleanshot", "Cleanshot",
+                "Capture", "capture",
+                "Snagit", "snagit",
+                "скриншот", "снимок экрана",  // Russian
+                "captura de pantalla", "Captura de pantalla",  // Spanish
+                "capture d'écran", "Capture d'écran"  // French
+            ]
         default:
             return []
         }
@@ -630,7 +632,17 @@ class VacManager: ObservableObject {
         // Define patterns to exclude for each file type
         switch fileType.name {
         case "Media":
-            return ["screenshot", "screen shot", "screen recording", "screen capture", "Screenshot", "Screen Shot", "Screen Recording", "Screen Capture", "CleanShot"]
+            // Exclude all screenshot patterns from regular media
+            return [
+                "screenshot", "screen shot", "screen recording", "screen capture",
+                "Screenshot", "Screen Shot", "Screen Recording", "Screen Capture",
+                "CleanShot", "cleanshot", "Cleanshot",
+                "Capture", "capture",
+                "Snagit", "snagit",
+                "скриншот", "снимок экрана",  // Russian
+                "captura de pantalla", "Captura de pantalla",  // Spanish
+                "capture d'écran", "Capture d'écran"  // French
+            ]
         default:
             return []
         }
@@ -828,6 +840,50 @@ class VacManager: ObservableObject {
                 self?.savePreferences()
             }
         }
+    }
+
+    // MARK: - Real Folder Access (Critical for Sandbox)
+    private func ensureRealFolderAccess() {
+        NSLog("🔍 DEBUG: Ensuring real folder access (not sandbox paths)")
+
+        // Step 1: Ensure Desktop access
+        ensureDesktopAccess()
+
+        // Step 2: Ensure Documents access
+        ensureDocumentsAccess()
+
+        // Step 3: Verify we're not using sandbox paths
+        let sandboxPath = "Library/Containers/com.pablo.rackoff"
+
+        if sourceFolder.path.contains(sandboxPath) {
+            NSLog("⚠️ WARNING: Source folder is in sandbox container! Resetting to real Desktop")
+            sourceFolder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
+            requestDesktopAccess()
+        }
+
+        if destinationFolder.path.contains(sandboxPath) {
+            NSLog("⚠️ WARNING: Destination folder is in sandbox container! Resetting to real Documents/Archive")
+            destinationFolder = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Documents")
+                .appendingPathComponent("Archive")
+            requestDocumentsAccess()
+        }
+
+        // Step 4: Create real archive folder if needed
+        do {
+            try FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
+            NSLog("✅ SUCCESS: Archive folder verified/created at: \(destinationFolder.path)")
+        } catch {
+            NSLog("❌ ERROR: Failed to create archive folder at \(destinationFolder.path): \(error.localizedDescription)")
+            sendNotification(
+                title: "Archive Setup Failed",
+                body: "Unable to create archive folder. Please check folder permissions."
+            )
+        }
+
+        NSLog("🔍 DEBUG: Final paths:")
+        NSLog("  Source: \(sourceFolder.path)")
+        NSLog("  Destination: \(destinationFolder.path)")
     }
 
     // MARK: - Sandbox Desktop Access
