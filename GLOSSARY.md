@@ -74,3 +74,35 @@ Quick reference for RackOff's desktop cleaning architecture.
 - Timer-based execution at configured time (default 9 AM)
 - Reschedules for next day after trigger
 - Persists timer state across app restarts
+
+## Documentation Files
+
+**APP_STORE_CHECKLIST.md** - Complete App Store submission guide
+- Prerequisites (Developer account, certificates)
+- Code compliance checklist
+- Build & sign instructions
+- Notarization process
+- Asset requirements (screenshots, icon, marketing copy)
+- Submission workflow
+
+**ICON_REQUIREMENTS.md** - App icon creation guide
+- Design specifications (.icns format, sizes)
+- Brand guidelines (colors, style)
+- Creation workflow (Figma → PNG → .icns)
+- Integration instructions
+
+**APP_STORE_STATUS.md** - Current readiness tracker
+- Completed features (code compliance, docs)
+- Blockers (icon, signing, listing)
+- Timeline estimates
+
+**RECOVERY_GUIDE.md** - Sandbox file recovery
+- Where files went (sandbox container path)
+- Recovery script usage
+- Manual recovery options
+- What was fixed
+
+**PrivacyInfo.xcprivacy** - Privacy manifest (2025 requirement)
+- File timestamp API usage declaration
+- Disk space API usage declaration
+- No data collection statement

@@ -33,16 +33,24 @@ cp -r RackOff.app /Applications/  # Ship it to the world (or just yourself)
 ## Current state
 
 ✅ **What's working great:**
-- App Store ready (sandboxed, entitled, the whole deal)
+- App Store compliant (sandboxed, entitled, privacy manifest, usage descriptions)
 - No deprecated APIs haunting us
 - Memory-safe (we checked, no leaks)
 - Builds clean, runs smooth
+- Security-scoped bookmarks for real folder access
+- Comprehensive sandbox protection with recovery tools
 
-⚠️ **What it still needs:**
-- A real app icon (sparkles emoji doesn't count for App Store)
-- Your Developer ID for proper signing
-- Screenshots for the App Store listing
-- Maybe a website? (kidding, maybe not)
+⚠️ **What it needs for submission:**
+- App icon (.icns file) - see ICON_REQUIREMENTS.md
+- Developer ID for signing - need Apple Developer membership
+- App Store Connect listing - see APP_STORE_CHECKLIST.md
+
+📚 **Docs added:**
+- `APP_STORE_CHECKLIST.md` - Complete submission guide
+- `ICON_REQUIREMENTS.md` - Icon creation workflow
+- `APP_STORE_STATUS.md` - Current readiness tracker (40%)
+- `RECOVERY_GUIDE.md` - Sandbox file recovery instructions
+- `PrivacyInfo.xcprivacy` - 2025 privacy manifest
 
 ## Technical choices explained
 

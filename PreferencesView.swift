@@ -461,7 +461,9 @@ struct FoldersPreferences: View {
                     Spacer()
                     
                     Button("Change") {
-                        // TODO: Show folder picker
+                        // NOTE: Folder picker intentionally disabled
+                        // Folders are managed via sandbox security-scoped bookmarks
+                        // See VacManager.ensureRealFolderAccess() for actual implementation
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
@@ -1095,7 +1097,8 @@ struct SmartDestinationRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             
             Button("Change") {
-                // TODO: Show destination picker
+                // NOTE: Destination picker intentionally disabled
+                // Destinations managed via FileType settings and sandbox bookmarks
             }
             .buttonStyle(.plain)
             .font(.system(size: 11))
@@ -1283,7 +1286,8 @@ struct CustomDestinationRow: View {
             Spacer()
             
             Button("Choose...") {
-                // TODO: Show folder picker
+                // NOTE: Custom folder picker intentionally disabled
+                // Managed via VacManager.updateFileTypeCustomDestination()
             }
             .buttonStyle(BorderedButtonStyle())
             .scaleEffect(0.9)

@@ -92,7 +92,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var aboutPopover = NSPopover()
     var preferencesWindow: NSWindow?
     lazy var vacManager: VacManager = {
-        NSLog("🔍 DEBUG: Creating VacManager in AppDelegate")
         return VacManager()
     }()
     var currentIconStyle: MenuIconStyle = .sparkles
@@ -101,13 +100,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var undoMenuItem: NSMenuItem!
     
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSLog("🔍 DEBUG: App finished launching")
         // Load icon style preference
         if let savedStyle = UserDefaults.standard.string(forKey: "menuIconStyle"),
            let style = MenuIconStyle(rawValue: savedStyle) {
             currentIconStyle = style
         }
-        NSLog("🔍 DEBUG: VacManager will be created lazily when first accessed")
         
         // Listen for preferences notification
         NotificationCenter.default.addObserver(self, selector: #selector(showPreferences), name: Notification.Name("ShowPreferences"), object: nil)
@@ -259,7 +256,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func undoLastClean() {
         Task {
             let result = await vacManager.undoLastClean()
-            print("Undo completed: \(result.restoredCount) files restored")
+            NSLog("Undo completed: \(result.restoredCount) files restored")
         }
     }
     

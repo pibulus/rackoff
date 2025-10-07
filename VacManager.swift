@@ -113,7 +113,6 @@ class VacManager: ObservableObject {
     
     // MARK: - Initialization
     init() {
-        NSLog("🔍 DEBUG: VacManager init() started")
 
         // Load preferences first (but don't trust the paths yet)
         loadPreferences()
@@ -125,10 +124,8 @@ class VacManager: ObservableObject {
         // Request notification permissions
         requestNotificationPermissions()
 
-        NSLog("🔍 DEBUG: About to setup scheduling with schedule: \(schedule)")
         // Setup scheduling
         setupScheduling()
-        NSLog("🔍 DEBUG: VacManager init() completed")
     }
     
     deinit {
@@ -292,7 +289,6 @@ class VacManager: ObservableObject {
     }
     
     func vacuum() async -> (movedCount: Int, totalBytes: Int64, errors: [String]) {
-        NSLog("🔍 DEBUG: vacuum() called")
         await MainActor.run {
             isProcessing = true
         }
@@ -302,9 +298,6 @@ class VacManager: ObservableObject {
             }
         }
 
-        NSLog("🔍 DEBUG: Source folder: \(sourceFolder.path)")
-        NSLog("🔍 DEBUG: Destination folder: \(destinationFolder.path)")
-        NSLog("🔍 DEBUG: Organization mode: \(organizationMode)")
 
         var movedCount = 0
         var totalBytes: Int64 = 0
@@ -314,15 +307,11 @@ class VacManager: ObservableObject {
         // First, count total files to move
         var totalFiles = 0
         let enabledFileTypes = fileTypes.filter({ $0.isEnabled })
-        NSLog("🔍 DEBUG: Enabled file types: \(enabledFileTypes.map { $0.name })")
 
         for fileType in enabledFileTypes {
             let files = findFiles(ofType: fileType)
-            NSLog("🔍 DEBUG: Looking for \(fileType.name) files in \(sourceFolder.path)")
-            NSLog("🔍 DEBUG: Found \(files.count) \(fileType.name) files: \(files.map { $0.lastPathComponent })")
             totalFiles += files.count
         }
-        NSLog("🔍 DEBUG: Total files to process: \(totalFiles)")
         await MainActor.run {
             currentProgress = (0, totalFiles)
         }
@@ -330,10 +319,8 @@ class VacManager: ObservableObject {
         // Process each enabled file type
         for fileType in fileTypes.filter({ $0.isEnabled }) {
             let files = findFiles(ofType: fileType)
-            NSLog("🔍 DEBUG: Processing \(files.count) \(fileType.name) files")
 
             for file in files {
-                NSLog("🔍 DEBUG: Processing file: \(file.lastPathComponent)")
                 // Update progress
                 await MainActor.run {
                     currentProgress.current += 1
@@ -346,14 +333,12 @@ class VacManager: ObservableObject {
                 
                 let fileName = file.lastPathComponent
                 let destinationFolder = getDestinationFolder(for: fileType, fileURL: file)
-                NSLog("🔍 DEBUG: Destination folder for \(fileName): \(destinationFolder.path)")
 
                 // Create destination folder if it doesn't exist
                 let folderExisted = FileManager.default.fileExists(atPath: destinationFolder.path)
                 do {
                     try FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
                     if !folderExisted {
-                        NSLog("🔍 DEBUG: ✅ Created NEW destination folder: \(destinationFolder.path)")
                         // Notify user that a new folder was created
                         // Check notification permissions before sending
                         let settings = await UNUserNotificationCenter.current().notificationSettings()
@@ -373,10 +358,8 @@ class VacManager: ObservableObject {
                             try? await UNUserNotificationCenter.current().add(request)
                         }
                     } else {
-                        NSLog("🔍 DEBUG: ✅ Verified existing destination folder: \(destinationFolder.path)")
                     }
                 } catch {
-                    NSLog("🔍 DEBUG: ❌ Failed to create folder \(destinationFolder.path): \(error.localizedDescription)")
                     errors.append("Failed to create folder: \(error.localizedDescription)")
                     continue
                 }
@@ -396,11 +379,9 @@ class VacManager: ObservableObject {
                     } while FileManager.default.fileExists(atPath: destination.path) && counter < 100
                 }
                 
-                NSLog("🔍 DEBUG: Attempting to move \(file.path) to \(destination.path)")
 
                 // SAFETY CHECK: Verify source file exists
                 guard FileManager.default.fileExists(atPath: file.path) else {
-                    NSLog("🔍 DEBUG: ERROR - Source file doesn't exist: \(file.path)")
                     errors.append("Source file not found: \(fileName)")
                     continue
                 }
@@ -418,15 +399,12 @@ class VacManager: ObservableObject {
                     if let originalDate = originalCreationDate {
                         do {
                             try FileManager.default.setAttributes([.creationDate: originalDate], ofItemAtPath: destination.path)
-                            NSLog("🔍 DEBUG: Restored creation date for \(fileName) to \(originalDate)")
                         } catch {
-                            NSLog("🔍 DEBUG: Failed to restore creation date for \(fileName): \(error.localizedDescription)")
                         }
                     }
 
                     // SAFETY CHECK: Verify the move was successful
                     if FileManager.default.fileExists(atPath: destination.path) {
-                        NSLog("🔍 DEBUG: ✅ Successfully moved \(fileName) to \(destination.path)")
                         movedCount += 1
                         totalBytes += fileSize
 
@@ -437,12 +415,10 @@ class VacManager: ObservableObject {
                             timestamp: Date()
                         ))
                     } else {
-                        NSLog("🔍 DEBUG: ❌ CRITICAL ERROR - Move reported success but destination file doesn't exist!")
                         errors.append("File move verification failed for: \(fileName)")
                     }
 
                 } catch {
-                    NSLog("🔍 DEBUG: ❌ Failed to move \(fileName): \(error.localizedDescription)")
                     errors.append("Failed to move \(file.lastPathComponent): \(error.localizedDescription)")
                 }
             }
@@ -467,19 +443,15 @@ class VacManager: ObservableObject {
 
     private func getFileDate(for fileURL: URL?) -> Date {
         guard let fileURL = fileURL else {
-            NSLog("🔍 DEBUG: No fileURL provided, using current date")
             return Date()
         }
 
         do {
             let resourceValues = try fileURL.resourceValues(forKeys: [.creationDateKey])
             let creationDate = resourceValues.creationDate ?? Date()
-            NSLog("🔍 DEBUG: File \(fileURL.lastPathComponent) creation date: \(creationDate)")
             return creationDate
         } catch {
-            NSLog("🔍 DEBUG: Failed to get creation date for \(fileURL.lastPathComponent): \(error.localizedDescription)")
             let fallbackDate = Date()
-            NSLog("🔍 DEBUG: Using fallback date: \(fallbackDate)")
             return fallbackDate
         }
     }
@@ -487,8 +459,6 @@ class VacManager: ObservableObject {
     private func getDestinationFolder(for fileType: FileType, fileURL: URL? = nil) -> URL {
         // Get the date to use (file creation date if available, otherwise today)
         let dateToUse = getFileDate(for: fileURL)
-        NSLog("🔍 DEBUG: Determining destination folder for \(fileType.name) file: \(fileURL?.lastPathComponent ?? "unknown")")
-        NSLog("🔍 DEBUG: Organization mode: \(organizationMode), Date to use: \(dateToUse)")
 
         let resultFolder: URL
 
@@ -499,56 +469,46 @@ class VacManager: ObservableObject {
             dateFormatter.dateFormat = "yyyy-MM-dd"
             let dateString = dateFormatter.string(from: dateToUse)
             resultFolder = destinationFolder.appendingPathComponent(dateString)
-            NSLog("🔍 DEBUG: Quick Archive mode - creating date folder: \(dateString)")
 
         case .sortByType:
             // Everything goes to type folders
             resultFolder = destinationFolder.appendingPathComponent(fileType.name)
-            NSLog("🔍 DEBUG: Sort by Type mode - using type folder: \(fileType.name)")
 
         case .smartClean:
             // Use per-file-type destination settings
-            NSLog("🔍 DEBUG: Smart Clean mode - file type destination: \(fileType.destination)")
             switch fileType.destination {
             case .daily:
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-MM-dd"
                 let dateString = dateFormatter.string(from: dateToUse)
                 resultFolder = destinationFolder.appendingPathComponent(dateString)
-                NSLog("🔍 DEBUG: Daily destination - creating date folder: \(dateString)")
 
             case .weekly:
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-'W'ww"
                 let dateString = dateFormatter.string(from: dateToUse)
                 resultFolder = destinationFolder.appendingPathComponent(dateString)
-                NSLog("🔍 DEBUG: Weekly destination - creating week folder: \(dateString)")
 
             case .monthly:
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-MM"
                 let dateString = dateFormatter.string(from: dateToUse)
                 resultFolder = destinationFolder.appendingPathComponent(dateString)
-                NSLog("🔍 DEBUG: Monthly destination - creating month folder: \(dateString)")
 
             case .typeFolder:
                 resultFolder = destinationFolder.appendingPathComponent(fileType.name)
-                NSLog("🔍 DEBUG: Type folder destination - using: \(fileType.name)")
 
             case .custom:
                 // Use custom destination if set, otherwise fall back to type folder
                 resultFolder = fileType.customDestination ?? destinationFolder.appendingPathComponent(fileType.name)
-                NSLog("🔍 DEBUG: Custom destination: \(resultFolder.path)")
 
             case .skip:
                 // This case shouldn't happen since we filter enabled file types
                 // But return a safe default
                 resultFolder = destinationFolder.appendingPathComponent(fileType.name)
-                NSLog("🔍 DEBUG: Skip destination (fallback) - using: \(fileType.name)")
             }
         }
 
-        NSLog("🔍 DEBUG: Final destination folder: \(resultFolder.path)")
         return resultFolder
     }
     
@@ -558,7 +518,6 @@ class VacManager: ObservableObject {
 
         do {
             let contents = try fileManager.contentsOfDirectory(at: sourceFolder, includingPropertiesForKeys: [.isRegularFileKey])
-            NSLog("🔍 DEBUG: Directory contents count: \(contents.count)")
 
             for item in contents {
                 // Skip directories and hidden files
@@ -572,7 +531,6 @@ class VacManager: ObservableObject {
                 }
             }
         } catch {
-            NSLog("🔍 DEBUG: Error reading directory \(sourceFolder.path): \(error.localizedDescription)")
         }
 
         return results
@@ -580,13 +538,11 @@ class VacManager: ObservableObject {
     
     private func matchesFileType(_ url: URL, fileType: FileType) -> Bool {
         let filename = url.lastPathComponent.lowercased()
-        NSLog("🔍 DEBUG: Checking if '\(url.lastPathComponent)' matches file type '\(fileType.name)'")
 
         switch fileType.matcher {
         case .byExtension:
             // Simple extension matching
             let matches = fileType.extensions.contains(where: { filename.hasSuffix($0) })
-            NSLog("🔍 DEBUG: Extension matching for \(fileType.name): \(matches)")
             return matches
 
         case .byFilenamePattern:
@@ -594,7 +550,6 @@ class VacManager: ObservableObject {
             let patterns = getPatterns(for: fileType)
             let hasPattern = patterns.contains(where: { filename.contains($0.lowercased()) })
             let hasExtension = fileType.extensions.contains(where: { filename.hasSuffix($0) })
-            NSLog("🔍 DEBUG: Pattern matching for \(fileType.name): patterns=\(patterns), hasPattern=\(hasPattern), hasExtension=\(hasExtension)")
             return hasPattern && hasExtension
 
         case .byExtensionExcludingPattern:
@@ -602,7 +557,6 @@ class VacManager: ObservableObject {
             let hasExtension = fileType.extensions.contains(where: { filename.hasSuffix($0) })
             let excludePatterns = getExcludePatterns(for: fileType)
             let hasExcludedPattern = excludePatterns.contains(where: { filename.contains($0.lowercased()) })
-            NSLog("🔍 DEBUG: Extension excluding pattern for \(fileType.name): hasExtension=\(hasExtension), hasExcludedPattern=\(hasExcludedPattern)")
             return hasExtension && !hasExcludedPattern
         }
     }
@@ -844,7 +798,6 @@ class VacManager: ObservableObject {
 
     // MARK: - Real Folder Access (Critical for Sandbox)
     private func ensureRealFolderAccess() {
-        NSLog("🔍 DEBUG: Ensuring real folder access (not sandbox paths)")
 
         // Step 1: Ensure Desktop access
         ensureDesktopAccess()
@@ -881,7 +834,6 @@ class VacManager: ObservableObject {
             )
         }
 
-        NSLog("🔍 DEBUG: Final paths:")
         NSLog("  Source: \(sourceFolder.path)")
         NSLog("  Destination: \(destinationFolder.path)")
     }
