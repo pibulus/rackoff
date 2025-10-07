@@ -3,7 +3,12 @@
 <plist version="1.0">
 <dict>
 	<key>files</key>
-	<dict/>
+	<dict>
+		<key>Resources/PrivacyInfo.xcprivacy</key>
+		<data>
+		NGPPl7hCCyrmXLQpyQaJJxtSDP8=
+		</data>
+	</dict>
 	<key>files2</key>
 	<dict>
 		<key>RackOff.entitlements</key>
@@ -14,6 +19,13 @@
 			</data>
 			<key>requirement</key>
 			<string>cdhash H"14c7a881bc93373c7cb99a11a6fd87e59ecfbfa1" or cdhash H"29d68d05228e8c37cf13b780898398172cb910d2"</string>
+		</dict>
+		<key>Resources/PrivacyInfo.xcprivacy</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			KUWJa3zX7aEblbLk0DycjQBnfnzfh8ATEFXGv5R+w7k=
+			</data>
 		</dict>
 	</dict>
 	<key>rules</key>

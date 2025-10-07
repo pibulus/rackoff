@@ -50,5 +50,8 @@ Package.resolved
 # App bundle (keep source, ignore built app)
 # Note: RackOff.app is tracked for easy testing/distribution
 
+# Icon generation artifacts
+*.iconset/
+
 # Logs
 *.log

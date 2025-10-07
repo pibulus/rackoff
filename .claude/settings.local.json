@@ -7,7 +7,10 @@
       "Bash(git add:*)",
       "Bash(./build.sh:*)",
       "Bash(defaults read:*)",
-      "Read(//Users/pabloalvarado/Documents/Archive/**)"
+      "Read(//Users/pabloalvarado/Documents/Archive/**)",
+      "Bash(plutil:*)",
+      "Bash(codesign:*)",
+      "Bash(spctl:*)"
     ],
     "additionalDirectories": [
       "/Users/pabloalvarado/Desktop"

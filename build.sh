@@ -58,6 +58,8 @@ cat > "$APP_NAME.app/Contents/Info.plist" << EOF
     <string>$VERSION</string>
     <key>CFBundleVersion</key>
     <string>$BUILD_NUMBER</string>
+    <key>CFBundleIconFile</key>
+    <string>RackOff</string>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSApplicationCategoryType</key>
@@ -67,13 +69,27 @@ cat > "$APP_NAME.app/Contents/Info.plist" << EOF
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2024 Pablo. All rights reserved.</string>
+    <string>Copyright © 2025 Pablo. All rights reserved.</string>
+    <key>CFBundleDocumentTypes</key>
+    <array/>
+    <key>NSAppleScriptEnabled</key>
+    <false/>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>MacOSX</string>
+    </array>
     <key>NSUserNotificationAlertStyle</key>
     <string>alert</string>
     <key>NSSupportsAutomaticTermination</key>
     <false/>
     <key>NSSupportsSuddenTermination</key>
     <false/>
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>RackOff organizes files from your Desktop into the Archive folder.</string>
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>RackOff stores organized files in your Documents/Archive folder.</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>RackOff can optionally organize files from your Downloads folder.</string>
 </dict>
 </plist>
 EOF
@@ -81,6 +97,19 @@ EOF
 # Copy entitlements file
 if [ -f "RackOff.entitlements" ]; then
     cp RackOff.entitlements "$APP_NAME.app/Contents/"
+fi
+
+# Copy privacy manifest
+if [ -f "PrivacyInfo.xcprivacy" ]; then
+    cp PrivacyInfo.xcprivacy "$APP_NAME.app/Contents/Resources/"
+fi
+
+# Copy app icon if present
+if [ -f "RackOff.icns" ]; then
+    cp RackOff.icns "$APP_NAME.app/Contents/Resources/"
+    echo "✨ App icon added"
+else
+    echo "⚠️  No app icon found (RackOff.icns) - required for App Store"
 fi
 
 # Code sign the app
@@ -100,7 +129,21 @@ echo ""
 echo "To run: open $APP_NAME.app"
 echo "To install: cp -r $APP_NAME.app /Applications/"
 echo ""
-echo "📱 For App Store submission:"
-echo "1. Replace CODESIGN_IDENTITY with your Developer ID"
-echo "2. Build with: ./build.sh"
-echo "3. Create archive with: xcrun altool or Xcode"
+echo "📱 App Store Readiness:"
+echo "✅ Sandboxed with entitlements"
+echo "✅ Privacy manifest included"
+echo "✅ Usage descriptions added"
+if [ -f "RackOff.icns" ]; then
+    echo "✅ App icon included"
+else
+    echo "❌ Missing app icon (see ICON_REQUIREMENTS.md)"
+fi
+echo ""
+echo "Next steps for App Store:"
+echo "1. Create app icon → See ICON_REQUIREMENTS.md"
+echo "2. Replace CODESIGN_IDENTITY with your Developer ID"
+echo "3. Build with: ./build.sh"
+echo "4. Notarize with: xcrun notarytool submit"
+echo "5. Upload via Xcode or App Store Connect"
+echo ""
+echo "See APP_STORE_CHECKLIST.md for complete submission guide"
