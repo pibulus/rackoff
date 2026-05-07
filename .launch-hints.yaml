@@ -1,0 +1,38 @@
+# Launch hints for Launch Arsenal.
+# Edit aggressively. These fields should pin the app's real audience, problem, and promise.
+name: RackOff ✨
+slug: rackoff
+app_type: mac-app
+audience: people who already feel the problem
+problem: RackOff - a menu bar app that cleans desktops without being annoying about it.
+promise: 'RackOffApp.swift - Menu bar magic, icon switching, the sparkles'
+cta: Reply if you want the link.
+differentiators:
+  - >-
+    RackOff - a menu bar app that cleans desktops without being annoying about
+    it.
+  - >-
+    Built with SwiftUI because we like things simple. Does one thing. Does it
+    well. Honestly, it's just three Swift files and some attitude.
+  - >-
+    Why these three organization modes? - Quick Archive: for the "just clean it"
+    folks - Sort by Type: for the organizers - Smart Clean: for the control
+    enthusiasts
+proof_points:
+  - Quick Archive → everything into daily folders
+  - Sort by Type → files find their tribes
+  - Smart Clean → you decide what goes where
+  - Screenshots that pile up during debugging sessions
+objections:
+  - 'Still wants a human pass on audience, proof, and the sharpest angle.'
+keywords:
+  seed:
+    - RackOff ✨
+    - rackoff
+    - mac app
+  audience: people who already feel the problem
+  intent:
+    - launch faster
+    - clearer first draft
+manual_notes:
+  - Edit this aggressively. Keep only the lines that feel native to the app.

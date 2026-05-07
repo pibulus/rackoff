@@ -10,7 +10,9 @@
       "Read(//Users/pabloalvarado/Documents/Archive/**)",
       "Bash(plutil:*)",
       "Bash(codesign:*)",
-      "Bash(spctl:*)"
+      "Bash(spctl:*)",
+      "Bash(test:*)",
+      "Bash(awk:*)"
     ],
     "additionalDirectories": [
       "/Users/pabloalvarado/Desktop"
