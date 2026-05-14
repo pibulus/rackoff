@@ -37,7 +37,7 @@ Priority order:
 - Other available types: Documents, Media, Archives
 - Quick Archive: enabled files go into `YYYY-MM-DD` folders based on file creation date.
 - Sort by Type: enabled files go into type folders.
-- Smart Clean: each enabled file type can use daily, weekly, monthly, type, custom, or skip behavior.
+- Smart Clean: each enabled file type can use daily, weekly, monthly, type, or skip behavior. Custom destinations exist in the model but are not wired to a usable folder picker yet.
 - Undo works for the last cleaning operation in the current app session.
 
 ## Known Gaps

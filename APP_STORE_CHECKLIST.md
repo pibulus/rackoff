@@ -2,6 +2,8 @@
 
 Complete guide for submitting RackOff to the Mac App Store.
 
+This is not the active project status. Use `PROJECT_STATUS.md` and `TESTING.md` until the product/testing pass and Preferences cleanup are complete.
+
 ## Prerequisites
 
 ### 1. Apple Developer Account
@@ -15,13 +17,13 @@ Complete guide for submitting RackOff to the Mac App Store.
 security find-identity -v -p codesigning
 ```
 
-You need:
-- [ ] **Developer ID Application** certificate (for notarization)
-- [ ] **Mac App Distribution** certificate (for App Store)
+You need the certificate for the distribution path:
+- [ ] **Apple Distribution** or **Mac App Distribution** certificate (for Mac App Store)
+- [ ] **Developer ID Application** certificate (only for direct downloads outside the Mac App Store)
 
 **Get certificates:**
 1. Go to [Apple Developer Certificates](https://developer.apple.com/account/resources/certificates/list)
-2. Create "Mac App Distribution" certificate
+2. Create the Apple Distribution or Mac App Distribution certificate for App Store work
 3. Download and install in Keychain Access
 
 ### 3. App Store Connect Setup
@@ -34,7 +36,7 @@ You need:
 
 ## Phase 1: Code Compliance ✅
 
-### Already Completed:
+### Previously Completed, Revalidate Before Submission:
 - ✅ Sandboxed with proper entitlements
 - ✅ Privacy manifest (PrivacyInfo.xcprivacy)
 - ✅ Usage descriptions for file access
@@ -56,12 +58,17 @@ You need:
 
 ## Phase 2: Build & Sign
 
-### Update Developer ID
+### Update Signing Identity
 
 1. Open `build.sh`
 2. Find line: `CODESIGN_IDENTITY="-"`
-3. Replace with your Developer ID:
+3. Replace it with the right certificate for the distribution path:
    ```bash
+   # Mac App Store examples:
+   CODESIGN_IDENTITY="Apple Distribution: Your Name (TEAM_ID)"
+   CODESIGN_IDENTITY="3rd Party Mac Developer Application: Your Name (TEAM_ID)"
+
+   # Direct distribution outside the Mac App Store:
    CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAM_ID)"
    ```
 
@@ -71,7 +78,7 @@ You need:
 # Clean build
 rm -rf RackOff.app
 
-# Build with your Developer ID
+# Build with the selected distribution certificate
 ./build.sh
 ```
 
@@ -92,9 +99,9 @@ Expected output: `satisfies its Designated Requirement`
 
 ---
 
-## Phase 3: Notarization
+## Phase 3: Direct Distribution Notarization
 
-Apple requires notarization for all apps distributed outside the App Store. This validates your app doesn't contain malware.
+Apple requires notarization for apps distributed outside the Mac App Store. This is not the Mac App Store upload path.
 
 ### Create App-Specific Password
 
@@ -392,12 +399,15 @@ Fix issues and resubmit. Most apps get approved within 2-3 submission cycles.
 
 **Before Submitting:**
 - [ ] App icon created and integrated
-- [ ] Build signed with Developer ID
-- [ ] App notarized successfully
+- [ ] Build signed with Apple Distribution or Mac App Distribution certificate
 - [ ] Screenshots captured (3-5 images)
 - [ ] Privacy policy published
 - [ ] App Store Connect listing complete
 - [ ] Tested on clean macOS install
+
+**Before Direct Distribution Outside The Mac App Store:**
+- [ ] Build signed with Developer ID Application certificate
+- [ ] App notarized successfully
 
 **Submission:**
 - [ ] Build uploaded

@@ -6,12 +6,12 @@ Your desktop's chaos nemesis. Finally.
 
 You know that desktop situation? The one where screenshots multiply like rabbits and random PDFs just... appear?
 
-RackOff swoops in, sorts it all into tidy dated folders, then gets out of your way.  
+RackOff swoops in, sorts it all into tidy dated folders, then gets out of your way.
 One click. Desktop's clean. You're back to work (or whatever).
 
 **Three ways to organize your chaos:**
-- Quick Archive → everything into daily folders
-- Sort by Type → files find their tribes  
+- Quick Archive → enabled matching files into daily folders
+- Sort by Type → enabled matching files find their tribes
 - Smart Clean → you decide what goes where
 
 ## Get it running
@@ -23,7 +23,7 @@ One click. Desktop's clean. You're back to work (or whatever).
 # Test the cleaner safely with fake files
 ./scripts/smoke-test.sh
 
-# Install it  
+# Install it
 cp -r RackOff.app /Applications/
 
 # Use it
@@ -42,7 +42,7 @@ Pick your cleaning vibe:
 - Manual (when the mood strikes)
 - On launch and scheduled cleaning are in the code, but the Preferences UI needs a wiring pass before release
 
-Everything lands safe in `~/Documents/Archive/[organized by date or type]`  
+Everything lands safe in `~/Documents/Archive/[organized by date or type]`
 Nothing's deleted. Just... relocated.
 
 ## Current focus
@@ -55,17 +55,17 @@ See `PROJECT_STATUS.md` and `TESTING.md` for the current state.
 
 RackOff does one thing: it cleans your desktop without making it weird.
 
-Want to customize? Right-click file types in Smart Clean mode.  
-Bored of sparkles? Right-click the menu bar icon for options.  
+Want to tune Smart Clean destinations? Right-click file types in Smart Clean mode. Custom folder picking still needs a wiring pass.
+Bored of sparkles? Right-click the menu bar icon for options.
 Miss that one file? It's chilling in the Archive folder.
 
-No accounts to make. No cloud to feed. No AI watching.  
+No accounts to make. No cloud to feed. No AI watching.
 Just a clean desktop when you need one.
 
 Built in Bangkok with plenty of coffee and mild frustration at my own desktop.
 
 ---
 
-Part of SoftStack.  
-$1 apps that do one thing well and don't make it weird.  
+Part of SoftStack.
+$1 apps that do one thing well and don't make it weird.
 Light touch. Real work.

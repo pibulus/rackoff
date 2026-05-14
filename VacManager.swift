@@ -124,6 +124,8 @@ class VacManager: ObservableObject {
         setupSchedule: Bool = true,
         persistPreferences: Bool = true
     ) {
+        let usesInjectedFolders = sourceFolder != nil || destinationFolder != nil
+
         self.shouldPersistPreferences = persistPreferences
         self.shouldSendNotifications = sendNotifications
 
@@ -140,7 +142,7 @@ class VacManager: ObservableObject {
             self.destinationFolder = destinationFolder
         }
 
-        if ensureFolderAccess {
+        if ensureFolderAccess && !usesInjectedFolders {
             // CRITICAL: Ensure we have proper access to real folders, not sandbox.
             // This must happen before real user file operations.
             ensureRealFolderAccess()
@@ -919,6 +921,8 @@ class VacManager: ObservableObject {
     }
 
     private func saveDesktopBookmark(for url: URL) {
+        guard shouldPersistPreferences else { return }
+
         do {
             let bookmarkData = try url.bookmarkData(options: .withSecurityScope)
             UserDefaults.standard.set(bookmarkData, forKey: "desktopBookmark")
@@ -1009,6 +1013,8 @@ class VacManager: ObservableObject {
     }
 
     private func saveDocumentsBookmark(for url: URL) {
+        guard shouldPersistPreferences else { return }
+
         do {
             let bookmarkData = try url.bookmarkData(options: .withSecurityScope)
             UserDefaults.standard.set(bookmarkData, forKey: "documentsBookmark")

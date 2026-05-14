@@ -1,20 +1,25 @@
-# 🍎 RackOff App Store Readiness Status
+# RackOff App Store Submission Checklist
 
-**Last Updated:** October 7, 2025
+- **Original readiness snapshot:** October 7, 2025
+- **Reframed:** May 14, 2026
 
-> 2026-05-14 note: App Store submission is not the active focus right now. The current priority is product sanity, repo/docs cleanup, and proving RackOff handles real screenshot-heavy desktops safely. Keep this file as the App Store checklist, but use `PROJECT_STATUS.md` and `TESTING.md` for the current working state.
+This is now a submission checklist, not the live project status. App Store work is parked while RackOff goes through product sanity, Preferences cleanup, and real-desktop testing.
+
+Use `PROJECT_STATUS.md` and `TESTING.md` for the current working state.
 
 ---
 
-## ✅ Completed (Ready for Submission)
+## Previously Completed Submission Prep
+
+These items existed in the October 2025 submission pass. Revalidate them after the product/testing pass before treating the app as release-ready.
 
 ### Code Compliance
 - ✅ **Sandboxed** - App runs in Apple sandbox with proper entitlements
 - ✅ **Entitlements** - Desktop, Documents, Downloads read-write access configured
 - ✅ **Privacy Manifest** - `PrivacyInfo.xcprivacy` created with file timestamp/disk space API usage
 - ✅ **Usage Descriptions** - All file access prompts have clear user-facing descriptions
-- ✅ **No Deprecated APIs** - Clean build with no warnings
-- ✅ **Memory Safe** - No leaks, proper ARC memory management
+- ✅ **No Deprecated APIs** - Last checked during the previous submission pass
+- ✅ **Memory Safe** - Last checked during the previous submission pass
 - ✅ **Hardened Runtime** - Security flags configured in entitlements
 - ✅ **Info.plist Complete** - All required keys present (bundle ID, version, copyright, category)
 
@@ -51,21 +56,26 @@
 
 **Time estimate:** 2-4 hours
 
-### 2. Developer Signing
+### 2. Distribution Signing
 **Status:** Using ad-hoc signing (for local development)
-**Blocker:** Yes - Required for notarization and App Store
+**Blocker:** Yes - Required before any real distribution
 
 **What's needed:**
 1. Apple Developer Program membership ($99/year)
-2. "Mac App Distribution" certificate
-3. Update `CODESIGN_IDENTITY` in build.sh with your Developer ID
+2. For Mac App Store: Apple Distribution or Mac App Distribution signing
+3. For direct downloads: Developer ID Application signing plus notarization
+4. Update `CODESIGN_IDENTITY` in build.sh with the right certificate for the distribution path
 
 **Instructions:**
 ```bash
 # Check your certificates
 security find-identity -v -p codesigning
 
-# Update build.sh line 14:
+# Mac App Store examples:
+CODESIGN_IDENTITY="Apple Distribution: Your Name (TEAM_ID)"
+CODESIGN_IDENTITY="3rd Party Mac Developer Application: Your Name (TEAM_ID)"
+
+# Direct distribution outside the Mac App Store:
 CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAM_ID)"
 ```
 
@@ -124,16 +134,19 @@ CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAM_ID)"
 
 ## 📋 Submission Timeline
 
-### Minimum Path (Icon Only)
+### Historical Minimum Path
+
+This estimate assumes the product behavior and Preferences UI have already been revalidated. That is not true right now.
+
 1. **Create app icon** → 2-4 hours
-2. **Get Developer ID certificate** → 30 minutes
+2. **Get the right distribution certificate** → 30 minutes
 3. **Set up App Store Connect** → 15 minutes
 4. **Build, sign, upload** → 30 minutes
 5. **Fill metadata** → 1 hour
 6. **Submit for review** → 5 minutes
 7. **Wait for approval** → 1-3 days
 
-**Total active time:** ~5 hours
+**Historical active-time estimate:** ~5 hours after product/test signoff
 **Total elapsed time:** ~1 week
 
 ### Recommended Path (Icon + Assets)
@@ -141,37 +154,40 @@ Same as above, plus:
 - **Screenshots** → 1 hour
 - **Privacy policy page** → 15 minutes
 
-**Total active time:** ~6.5 hours
+**Historical active-time estimate:** ~6.5 hours after product/test signoff
 **Total elapsed time:** ~1 week
 
 ---
 
-## 🎯 Current State Summary
+## Current Submission State
 
-**Code:** 100% ready ✅
-**Documentation:** 100% ready ✅
-**Assets:** 0% complete ❌
-**Signing:** Not configured ❌
-**App Store listing:** Not created ❌
+- **Product/testing:** In progress; not ready for submission yet
+- **Preferences UI:** Needs wiring/simplification before release
+- **Code compliance:** Previously prepared, needs revalidation after product work
+- **Documentation:** Current working docs live in `PROJECT_STATUS.md` and `TESTING.md`
+- **Assets:** 0% complete ❌
+- **Signing:** Not configured ❌
+- **App Store listing:** Not created ❌
 
-**Readiness:** ~40%
+**Readiness:** Paused until product/test pass is complete
 
-**Biggest blockers:**
-1. App icon (2-4 hours to create)
-2. Developer ID signing (need Apple Developer membership)
-3. App Store Connect setup (15 min once you have account)
+**Current blockers before returning to App Store work:**
+1. Real-desktop screenshot test
+2. Preferences wiring/simplification
+3. Organization model decision for screenshots/docs
+4. App icon
+5. Distribution signing
+6. App Store Connect setup
 
 ---
 
 ## 🚀 Next Steps
 
-### Immediate (This Session)
-1. ✅ GLOSSARY.md committed
-2. ✅ Branch merged to main
-3. ✅ All changes pushed to GitHub
-4. ✅ Privacy manifest created
-5. ✅ Build script updated
-6. ✅ Documentation complete
+### Immediate
+1. Run the safe smoke test and real Desktop screenshot test
+2. Fix or simplify Preferences controls that are not wired to behavior
+3. Decide whether screenshots/docs should default to daily, weekly, type, or another model
+4. Revisit this checklist after the product pass
 
 ### Soon (Before Submission)
 1. ❌ Design and create app icon
@@ -197,4 +213,4 @@ See `APP_STORE_CHECKLIST.md` for the complete step-by-step submission guide, inc
 - Marketing copy templates
 - Review notes template
 
-**You're ~5 hours of active work away from App Store submission!** 🎉
+Do not treat this as submission-ready until `PROJECT_STATUS.md` no longer lists product/testing and Preferences gaps.

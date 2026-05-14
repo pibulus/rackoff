@@ -67,11 +67,11 @@ cp -r RackOff.app /Applications/  # Ship it to the world (or just yourself)
 ## Technical choices explained
 
 **Why compile directly instead of Xcode?**
-Because Xcode projects are where simplicity goes to die. Our build script is 100 lines.  
+Because Xcode projects are where simplicity goes to die. Our build script is readable and direct.
 Xcode would generate 1000 lines of XML we'd never look at.
 
 **Why track the .app bundle?**
-So you can grab and test immediately. See exactly what ships.  
+So you can grab and test immediately. See exactly what ships.
 No "works on my machine" mysteries.
 
 **Why these three organization modes?**
@@ -94,7 +94,7 @@ Keep it human. We're not robots talking to robots.
 
 Short sentences work. But sometimes you need a longer one to explain something properly, and that's totally fine.
 
-Show personality but don't force it. If a feature is boring, let it be boring.  
+Show personality but don't force it. If a feature is boring, let it be boring.
 The cleaning happens. Files move. Desktop's clean. Sometimes that's enough.
 
 ## Debugging tips

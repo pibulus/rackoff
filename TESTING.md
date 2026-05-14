@@ -49,17 +49,21 @@ Only do this when you are ready for RackOff to move real files.
 open RackOff.app
 ```
 
-3. Start with screenshots only enabled.
+3. Set the mode to `Quick`.
 
-4. Click `Clean Now`.
+4. Start with screenshots only enabled.
 
-5. Confirm screenshots moved to:
+5. Confirm the archive destination is the default `~/Documents/Archive`. Saved preferences can change this. The current Preferences UI also has a known display bug where it can show `~/Desktop/Archive` even though the actual default is `~/Documents/Archive`.
+
+6. Click `Clean Now`.
+
+7. Confirm screenshots moved to:
 
 ```text
 ~/Documents/Archive/YYYY-MM-DD/
 ```
 
-6. Use `Undo Last Clean` from the right-click menu or Preferences footer and confirm the files return to Desktop.
+8. Use `Undo Last Clean` from the right-click menu or Preferences footer and confirm the files return to Desktop.
 
 ## Organization Questions To Validate
 

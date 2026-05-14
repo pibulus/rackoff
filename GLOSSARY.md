@@ -31,7 +31,7 @@ Quick reference for RackOff's desktop cleaning architecture.
 `VacManager.swift` - Quick Archive, Sort by Type, Smart Clean
 
 **FileDestination** - Where files go in Smart Clean mode
-`VacManager.swift` - Daily, Weekly, Monthly, Type Folder, Custom, Skip
+`VacManager.swift` - Daily, Weekly, Monthly, Type Folder, Custom, Skip. Custom exists in the model but is not wired to a usable folder picker yet.
 
 **FileMatcher** - How to identify files
 `VacManager.swift` - byExtension, byFilenamePattern, byExtensionExcludingPattern
@@ -51,8 +51,8 @@ Quick reference for RackOff's desktop cleaning architecture.
 
 **Three Organization Modes**
 - Quick Archive: Enabled files → date folders (YYYY-MM-DD, based on creation date)
-- Sort by Type: Everything → type folders (Screenshots/, Documents/)
-- Smart Clean: Per-type destinations (Daily/Weekly/Monthly/Type/Custom)
+- Sort by Type: Enabled matching files → type folders (Screenshots/, Documents/)
+- Smart Clean: Per-type destinations (Daily/Weekly/Monthly/Type/Skip; Custom is a model path, not release-ready UI)
 
 **File Type Matchers**
 - Screenshots: byFilenamePattern (contains "Screenshot", "CleanShot", etc.)
@@ -73,7 +73,7 @@ Quick reference for RackOff's desktop cleaning architecture.
 **Daily Scheduling**
 - Timer-based execution at configured time (default 9 AM)
 - Reschedules for next day after trigger
-- Persists timer state across app restarts
+- Persists schedule/time preferences and recreates the timer on launch
 - Preferences schedule controls still need a wiring pass before relying on this for release
 
 **Smoke Test Harness**
