@@ -2,6 +2,8 @@
 
 **Last Updated:** October 7, 2025
 
+> 2026-05-14 note: App Store submission is not the active focus right now. The current priority is product sanity, repo/docs cleanup, and proving RackOff handles real screenshot-heavy desktops safely. Keep this file as the App Store checklist, but use `PROJECT_STATUS.md` and `TESTING.md` for the current working state.
+
 ---
 
 ## ✅ Completed (Ready for Submission)

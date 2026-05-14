@@ -20,6 +20,9 @@ One click. Desktop's clean. You're back to work (or whatever).
 # Build it
 ./build.sh
 
+# Test the cleaner safely with fake files
+./scripts/smoke-test.sh
+
 # Install it  
 cp -r RackOff.app /Applications/
 
@@ -37,11 +40,16 @@ Toggle what bugs you:
 
 Pick your cleaning vibe:
 - Manual (when the mood strikes)
-- On launch (fresh start every time)
-- Daily at 9 AM (set it and forget it exists)
+- On launch and scheduled cleaning are in the code, but the Preferences UI needs a wiring pass before release
 
 Everything lands safe in `~/Documents/Archive/[organized by date or type]`  
 Nothing's deleted. Just... relocated.
+
+## Current focus
+
+RackOff is in product/test mode. Before App Store work, the priority is making sure the cleaner is safe, predictable, and honest about what the Preferences window can actually control.
+
+See `PROJECT_STATUS.md` and `TESTING.md` for the current state.
 
 ## The deal
 

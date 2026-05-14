@@ -110,22 +110,49 @@ class VacManager: ObservableObject {
     private var saveTimer: Timer?
     private weak var scheduleTimer: Timer?
     private let fileAccessQueue = DispatchQueue(label: "com.pablo.rackoff.fileaccess")
+    private let shouldPersistPreferences: Bool
+    private let shouldSendNotifications: Bool
     
     // MARK: - Initialization
-    init() {
+    init(
+        loadStoredPreferences: Bool = true,
+        sourceFolder: URL? = nil,
+        destinationFolder: URL? = nil,
+        requestNotifications: Bool = true,
+        sendNotifications: Bool = true,
+        ensureFolderAccess: Bool = true,
+        setupSchedule: Bool = true,
+        persistPreferences: Bool = true
+    ) {
+        self.shouldPersistPreferences = persistPreferences
+        self.shouldSendNotifications = sendNotifications
 
-        // Load preferences first (but don't trust the paths yet)
-        loadPreferences()
+        if loadStoredPreferences {
+            // Load preferences first (but don't trust the paths yet)
+            loadPreferences()
+        }
 
-        // CRITICAL: Ensure we have proper access to real folders, not sandbox
-        // This MUST happen before any file operations
-        ensureRealFolderAccess()
+        if let sourceFolder {
+            self.sourceFolder = sourceFolder
+        }
 
-        // Request notification permissions
-        requestNotificationPermissions()
+        if let destinationFolder {
+            self.destinationFolder = destinationFolder
+        }
 
-        // Setup scheduling
-        setupScheduling()
+        if ensureFolderAccess {
+            // CRITICAL: Ensure we have proper access to real folders, not sandbox.
+            // This must happen before real user file operations.
+            ensureRealFolderAccess()
+        }
+
+        if requestNotifications && sendNotifications {
+            requestNotificationPermissions()
+        }
+
+        if setupSchedule {
+            setupScheduling()
+        }
     }
     
     deinit {
@@ -306,7 +333,7 @@ class VacManager: ObservableObject {
         
         // First, count total files to move
         var totalFiles = 0
-        let enabledFileTypes = fileTypes.filter({ $0.isEnabled })
+        let enabledFileTypes = activeFileTypes()
 
         for fileType in enabledFileTypes {
             let files = findFiles(ofType: fileType)
@@ -317,7 +344,7 @@ class VacManager: ObservableObject {
         }
         
         // Process each enabled file type
-        for fileType in fileTypes.filter({ $0.isEnabled }) {
+        for fileType in enabledFileTypes {
             let files = findFiles(ofType: fileType)
 
             for file in files {
@@ -338,7 +365,7 @@ class VacManager: ObservableObject {
                 let folderExisted = FileManager.default.fileExists(atPath: destinationFolder.path)
                 do {
                     try FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
-                    if !folderExisted {
+                    if shouldSendNotifications && !folderExisted {
                         // Notify user that a new folder was created
                         // Check notification permissions before sending
                         let settings = await UNUserNotificationCenter.current().notificationSettings()
@@ -357,7 +384,6 @@ class VacManager: ObservableObject {
 
                             try? await UNUserNotificationCenter.current().add(request)
                         }
-                    } else {
                     }
                 } catch {
                     errors.append("Failed to create folder: \(error.localizedDescription)")
@@ -439,6 +465,12 @@ class VacManager: ObservableObject {
             currentProgress = (0, 0)
         }
         return (movedCount, totalBytes, errors)
+    }
+
+    private func activeFileTypes() -> [FileType] {
+        fileTypes.filter { fileType in
+            fileType.isEnabled && !(organizationMode == .smartClean && fileType.destination == .skip)
+        }
     }
 
     private func getFileDate(for fileURL: URL?) -> Date {
@@ -615,6 +647,8 @@ class VacManager: ObservableObject {
     }
 
     private func sendNotification(title: String, body: String, subtitle: String? = nil) {
+        guard shouldSendNotifications else { return }
+
         // Check if we have permission to send notifications
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             guard settings.authorizationStatus == .authorized else {
@@ -756,6 +790,8 @@ class VacManager: ObservableObject {
     }
     
     private func savePreferences() {
+        guard shouldPersistPreferences else { return }
+
         UserDefaults.standard.set(schedule.rawValue, forKey: "schedule")
         UserDefaults.standard.set(organizationMode.rawValue, forKey: "organizationMode")
         UserDefaults.standard.set(sourceFolder, forKey: "sourceFolder")

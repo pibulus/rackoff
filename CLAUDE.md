@@ -6,23 +6,26 @@ Hey Claude Code, here's the deal with RackOff.
 
 RackOff - a menu bar app that cleans desktops without being annoying about it.
 
-Built with SwiftUI because we like things simple. Does one thing. Does it well.  
-Honestly, it's just three Swift files and some attitude.
+Built with SwiftUI because we like things simple. Does one thing. Does it well.
+The app started tiny, but it is now a small direct-built macOS app with a real preferences surface, constants, docs, and smoke tests.
 
 ## Building and running
 
 ```bash
 ./build.sh              # Compiles and signs everything
+./scripts/smoke-test.sh # Tests cleaner behavior in temp folders
 open RackOff.app        # Test it out
 cp -r RackOff.app /Applications/  # Ship it to the world (or just yourself)
 ```
 
 ## The architecture (if you can call it that)
 
-**Three files, no drama:**
+**Main files:**
 - `RackOffApp.swift` - Menu bar magic, icon switching, the sparkles
 - `ContentView.swift` - That pretty popover with gradients
 - `VacManager.swift` - The actual cleaning brain
+- `PreferencesView.swift` - Preferences window and settings UI
+- `RackOffConstants.swift` - Shared colors, spacing, sizing, and animation constants
 
 **How it all works:**
 - SwiftUI + AppKit for menu bar stuff (because that's how you do it)
@@ -39,10 +42,17 @@ cp -r RackOff.app /Applications/  # Ship it to the world (or just yourself)
 - Builds clean, runs smooth
 - Security-scoped bookmarks for real folder access
 - Comprehensive sandbox protection with recovery tools
+- Smoke test covers the core cleaner paths without touching the real Desktop
+
+🎯 **Current focus:**
+- Prove the app handles real screenshot-heavy desktops safely
+- Decide whether daily/type/smart organization is the right default model
+- Wire or simplify Preferences so it only shows real behavior
+- Keep App Store work parked until the product/test pass is done
 
 ⚠️ **What it needs for submission:**
 - App icon (.icns file) - see ICON_REQUIREMENTS.md
-- Developer ID for signing - need Apple Developer membership
+- Apple/Mac App Distribution signing - need Apple Developer membership
 - App Store Connect listing - see APP_STORE_CHECKLIST.md
 
 📚 **Docs added:**
@@ -51,6 +61,8 @@ cp -r RackOff.app /Applications/  # Ship it to the world (or just yourself)
 - `APP_STORE_STATUS.md` - Current readiness tracker (40%)
 - `RECOVERY_GUIDE.md` - Sandbox file recovery instructions
 - `PrivacyInfo.xcprivacy` - 2025 privacy manifest
+- `PROJECT_STATUS.md` - Current repo/product state
+- `TESTING.md` - Safe automated and manual test workflow
 
 ## Technical choices explained
 
@@ -73,7 +85,7 @@ Each mode took like 20 lines of code. Why not?
 
 - ARM64 only (Intel Macs, we hardly knew ye)
 - Desktop/Documents/Downloads only (sandbox rules)
-- 9 AM schedule isn't configurable (yet - but honestly, is 9 AM not perfect?)
+- Scheduling exists in `VacManager`, but Preferences needs wiring before we treat it as ready
 - No Windows version (obviously)
 
 ## Writing style notes

@@ -1,7 +1,8 @@
 #!/bin/bash
+set -euo pipefail
 
 # ===================================================================
-# RackOff App Builder - App Store Ready
+# RackOff App Builder
 # ===================================================================
 
 APP_NAME="RackOff"
@@ -9,8 +10,9 @@ BUNDLE_ID="com.pablo.rackoff"
 VERSION="1.0"
 BUILD_NUMBER="1"
 
-# Code signing identity (use "-" for ad-hoc signing during development)
-# For App Store: Replace with your Developer ID
+# Code signing identity (use "-" for ad-hoc signing during development).
+# For Mac App Store distribution, use Apple Distribution or Mac App Distribution.
+# Developer ID is for direct distribution outside the Mac App Store.
 CODESIGN_IDENTITY="-"
 
 echo "🛠 Building $APP_NAME..."
@@ -129,7 +131,7 @@ echo ""
 echo "To run: open $APP_NAME.app"
 echo "To install: cp -r $APP_NAME.app /Applications/"
 echo ""
-echo "📱 App Store Readiness:"
+echo "📱 Distribution Readiness:"
 echo "✅ Sandboxed with entitlements"
 echo "✅ Privacy manifest included"
 echo "✅ Usage descriptions added"
@@ -139,11 +141,12 @@ else
     echo "❌ Missing app icon (see ICON_REQUIREMENTS.md)"
 fi
 echo ""
-echo "Next steps for App Store:"
-echo "1. Create app icon → See ICON_REQUIREMENTS.md"
-echo "2. Replace CODESIGN_IDENTITY with your Developer ID"
-echo "3. Build with: ./build.sh"
-echo "4. Notarize with: xcrun notarytool submit"
-echo "5. Upload via Xcode or App Store Connect"
+echo "Next steps before distribution:"
+echo "1. Keep testing behavior → See TESTING.md"
+echo "2. Create app icon → See ICON_REQUIREMENTS.md"
+echo "3. Replace CODESIGN_IDENTITY with the right distribution certificate"
+echo "4. Build with: ./build.sh"
+echo "5. For direct distribution, notarize with: xcrun notarytool submit"
+echo "6. For Mac App Store, upload through Xcode or App Store Connect"
 echo ""
 echo "See APP_STORE_CHECKLIST.md for complete submission guide"

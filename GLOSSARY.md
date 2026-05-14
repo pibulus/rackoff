@@ -42,7 +42,7 @@ Quick reference for RackOff's desktop cleaning architecture.
 ## Services & Managers
 
 **VacManager** - Core cleaning logic (@MainActor)
-`VacManager.swift` - File scanning, moving, undo, scheduling
+`VacManager.swift` - File scanning, matching, moving, undo, scheduling, sandbox bookmarks
 
 **RackOffConstants** - App-wide constants
 `RackOffConstants.swift` - Sizes, spacing, colors, animations
@@ -50,7 +50,7 @@ Quick reference for RackOff's desktop cleaning architecture.
 ## Core Concepts
 
 **Three Organization Modes**
-- Quick Archive: Everything → date folders (YYYY-MM-DD)
+- Quick Archive: Enabled files → date folders (YYYY-MM-DD, based on creation date)
 - Sort by Type: Everything → type folders (Screenshots/, Documents/)
 - Smart Clean: Per-type destinations (Daily/Weekly/Monthly/Type/Custom)
 
@@ -74,6 +74,12 @@ Quick reference for RackOff's desktop cleaning architecture.
 - Timer-based execution at configured time (default 9 AM)
 - Reschedules for next day after trigger
 - Persists timer state across app restarts
+- Preferences schedule controls still need a wiring pass before relying on this for release
+
+**Smoke Test Harness**
+- `Tests/RackOffSmokeTest.swift` creates fake Desktop/Archive folders
+- `scripts/smoke-test.sh` compiles and runs the harness
+- Covers Quick Archive, Sort by Type, Smart Clean Skip, screenshot matching, hidden file skipping, and undo
 
 ## Documentation Files
 
@@ -95,6 +101,16 @@ Quick reference for RackOff's desktop cleaning architecture.
 - Completed features (code compliance, docs)
 - Blockers (icon, signing, listing)
 - Timeline estimates
+
+**PROJECT_STATUS.md** - Current active project state
+- Product/test focus
+- GitHub state and old branch/stash notes
+- Known product gaps
+
+**TESTING.md** - Verification guide
+- Compile check
+- Automated smoke test
+- Manual real-Desktop test checklist
 
 **RECOVERY_GUIDE.md** - Sandbox file recovery
 - Where files went (sandbox container path)
