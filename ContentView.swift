@@ -134,7 +134,12 @@ struct ContentView: View {
 
             // Peek: the carpet bag. Desktop's clean, but the last little while
             // of your stuff is right here — one click from being back in Finder.
-            if !vacManager.recentlyRacked.isEmpty {
+            // Before the first clean we show a quiet hint instead, so a new user
+            // knows up front their stuff gets put away, not thrown away.
+            if vacManager.recentlyRacked.isEmpty {
+                PeekEmptyState()
+                    .transition(.opacity)
+            } else {
                 PeekStrip(vacManager: vacManager)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
@@ -372,6 +377,44 @@ struct FileTypeRow: View {
                 )
         )
         .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Peek Empty State
+/// Shown before the first-ever clean. The whole job is one sentence of reassurance:
+/// your stuff gets put away, not thrown away, and it'll be right here. Answers the
+/// "where did everything go?" fear before the user has even clicked Clean.
+struct PeekEmptyState: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "archivebox")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.secondary.opacity(0.6))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Nothing racked yet")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondary)
+                Text("Cleaned files land here — one click from Finder.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary.opacity(0.7))
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(NSColor.controlBackgroundColor).opacity(0.2))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(
+                            style: StrokeStyle(lineWidth: 1, dash: [4, 4])
+                        )
+                        .foregroundColor(.secondary.opacity(0.15))
+                )
+        )
     }
 }
 
