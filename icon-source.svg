@@ -1,0 +1,68 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Brand gradient: orange -> pink, diagonal -->
+    <linearGradient id="tile" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"  stop-color="#FF9F3A"/>
+      <stop offset="48%" stop-color="#FF7A57"/>
+      <stop offset="100%" stop-color="#FF5E94"/>
+    </linearGradient>
+
+    <!-- Soft top highlight for a little depth -->
+    <linearGradient id="sheen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"  stop-color="#FFFFFF" stop-opacity="0.28"/>
+      <stop offset="42%" stop-color="#FFFFFF" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <radialGradient id="sparkGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="60%" stop-color="#FFFFFF" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Subtle warm shadow under the sparkle so it reads as floating -->
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#B23A2E" flood-opacity="0.20"/>
+    </filter>
+
+    <!-- macOS squircle-ish rounded square (content inset ~10%) -->
+    <clipPath id="tileClip">
+      <rect x="104" y="104" width="816" height="816" rx="184" ry="184"/>
+    </clipPath>
+  </defs>
+
+  <!-- Tile -->
+  <g clip-path="url(#tileClip)">
+    <rect x="104" y="104" width="816" height="816" fill="url(#tile)"/>
+    <rect x="104" y="104" width="816" height="816" fill="url(#sheen)"/>
+  </g>
+
+  <!-- Glow behind the main sparkle -->
+  <circle cx="512" cy="500" r="300" fill="url(#sparkGlow)"/>
+
+  <!-- Main 4-point sparkle (white), concave-diamond "twinkle" shape -->
+  <g filter="url(#soft)">
+    <path fill="#FFFFFF" d="
+      M512 196
+      C540 360 564 384 728 412
+      C564 440 540 464 512 628
+      C484 464 460 440 296 412
+      C460 384 484 360 512 196 Z"/>
+  </g>
+
+  <!-- Accent sparkle (lower-left) -->
+  <path fill="#FFFFFF" fill-opacity="0.96" d="
+    M360 600
+    C372 686 384 698 470 710
+    C384 722 372 734 360 820
+    C348 734 336 722 250 710
+    C336 698 348 686 360 600 Z"/>
+
+  <!-- Tiny accent sparkle (right) -->
+  <path fill="#FFFFFF" fill-opacity="0.88" d="
+    M712 612
+    C719 660 726 667 774 674
+    C726 681 719 688 712 736
+    C705 688 698 681 650 674
+    C698 667 705 660 712 612 Z"/>
+</svg>

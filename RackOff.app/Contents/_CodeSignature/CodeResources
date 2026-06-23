@@ -8,6 +8,10 @@
 		<data>
 		NGPPl7hCCyrmXLQpyQaJJxtSDP8=
 		</data>
+		<key>Resources/RackOff.icns</key>
+		<data>
+		gFMYjTVT6Pl0AGtPSwHsEec3Bi0=
+		</data>
 	</dict>
 	<key>files2</key>
 	<dict>
@@ -25,6 +29,13 @@
 			<key>hash2</key>
 			<data>
 			KUWJa3zX7aEblbLk0DycjQBnfnzfh8ATEFXGv5R+w7k=
+			</data>
+		</dict>
+		<key>Resources/RackOff.icns</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			WY7dS+JX7n5KkSkjcX4Z3pkZjVacoWRAhjPWOst33yY=
 			</data>
 		</dict>
 	</dict>
