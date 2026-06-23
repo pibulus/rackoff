@@ -2,6 +2,12 @@ import Foundation
 import SwiftUI
 import UserNotifications
 
+/// The name of the folder RackOff tidies into, under ~/Documents.
+/// "Stash" over "Archive" on purpose: it says *kept safe*, not *thrown away* —
+/// the trust message that makes a messy person clean a second time. It's also a
+/// place you'd actually open and browse, not a graveyard.
+let rackOffFolderName = "Stash"
+
 enum Schedule: String, CaseIterable, Codable {
     case manual = "Manual"
     case onLaunch = "On Launch"
@@ -111,7 +117,7 @@ class VacManager: ObservableObject {
     ]
     
     @Published var sourceFolder: URL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Desktop")
-    @Published var destinationFolder: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents").appendingPathComponent("Archive")
+    @Published var destinationFolder: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents").appendingPathComponent(rackOffFolderName)
     @Published var schedule: Schedule = .manual
     @Published var organizationMode: OrganizationMode = .quickArchive
     @Published var lastRun: Date?
@@ -560,9 +566,11 @@ class VacManager: ObservableObject {
 
         switch organizationMode {
         case .quickArchive:
-            // Everything goes to daily folders based on file creation date
+            // Everything goes to monthly folders based on the file's own creation
+            // date. Monthly is the sweet spot for browsing later — ~12 folders a year,
+            // each with real content to scroll, instead of a wall of near-empty days.
             let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd"
+            dateFormatter.dateFormat = "yyyy-MM"
             let dateString = dateFormatter.string(from: dateToUse)
             resultFolder = destinationFolder.appendingPathComponent(dateString)
 
@@ -958,7 +966,7 @@ class VacManager: ObservableObject {
             NSLog("⚠️ WARNING: Destination folder is in sandbox container! Resetting to real Documents/Archive")
             destinationFolder = FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent("Documents")
-                .appendingPathComponent("Archive")
+                .appendingPathComponent(rackOffFolderName)
             requestDocumentsAccess()
         }
 
@@ -1070,10 +1078,36 @@ class VacManager: ObservableObject {
     }
 
     // MARK: - Sandbox Documents Access
+
+    /// One-time migration from the old "Archive" folder to "Stash". If a user (or an
+    /// earlier build) already tidied into ~/Documents/Archive, carry that history over
+    /// rather than silently starting a fresh empty folder — losing track of someone's
+    /// stuff is exactly the trust break RackOff can't afford. Only renames when the old
+    /// folder exists AND the new one doesn't, so it's safe to call on every launch.
+    private func migrateLegacyArchiveFolderIfNeeded(in documents: URL) {
+        let legacy = documents.appendingPathComponent("Archive")
+        let current = documents.appendingPathComponent(rackOffFolderName)
+
+        guard FileManager.default.fileExists(atPath: legacy.path),
+              !FileManager.default.fileExists(atPath: current.path) else {
+            return
+        }
+
+        do {
+            try FileManager.default.moveItem(at: legacy, to: current)
+            NSLog("✅ SUCCESS: Migrated legacy Archive folder to \(rackOffFolderName)")
+        } catch {
+            // Non-fatal: if the rename fails we just keep using the new folder name.
+            // The old files stay put in Archive; nothing is lost, just not carried over.
+            NSLog("⚠️ WARNING: Could not migrate Archive → \(rackOffFolderName): \(error.localizedDescription)")
+        }
+    }
+
     private func ensureDocumentsAccess() {
         // Try to access the real Documents folder first
         let realDocuments = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents")
-        let archiveFolder = realDocuments.appendingPathComponent("Archive")
+        migrateLegacyArchiveFolderIfNeeded(in: realDocuments)
+        let archiveFolder = realDocuments.appendingPathComponent(rackOffFolderName)
 
         // Check if we can access it
         if FileManager.default.isReadableFile(atPath: realDocuments.path) {
@@ -1108,7 +1142,7 @@ class VacManager: ObservableObject {
 
             let result = panel.runModal()
             if result == .OK, let url = panel.url {
-                self?.destinationFolder = url.appendingPathComponent("Archive")
+                self?.destinationFolder = url.appendingPathComponent(rackOffFolderName)
                 self?.saveDocumentsBookmark(for: url)
             }
         }
@@ -1146,7 +1180,7 @@ class VacManager: ObservableObject {
             }
 
             if url.startAccessingSecurityScopedResource() {
-                let archiveURL = url.appendingPathComponent("Archive")
+                let archiveURL = url.appendingPathComponent(rackOffFolderName)
                 NSLog("✅ SUCCESS: Documents bookmark resolved for \(archiveURL.path)")
                 return archiveURL
             } else {

@@ -53,8 +53,8 @@ struct RackOffSmokeTest {
         let quickResult = await manager.vacuum()
         try expect(quickResult.errors.isEmpty, "Quick Archive returned errors: \(quickResult.errors)")
         try expect(quickResult.movedCount == 5, "Quick Archive moved \(quickResult.movedCount) files instead of 5")
-        try expect(fileManager.fileExists(atPath: archive.appendingPathComponent("2024-02-03/Screenshot 2024-02-03 at 12.00.00 PM.png").path), "Quick Archive did not move screenshots into the creation-date folder")
-        try expect(fileManager.fileExists(atPath: archive.appendingPathComponent("2024-02-03/report.pdf").path), "Quick Archive did not move documents into the creation-date folder")
+        try expect(fileManager.fileExists(atPath: archive.appendingPathComponent("2024-02/Screenshot 2024-02-03 at 12.00.00 PM.png").path), "Quick Archive did not move screenshots into the monthly creation-date folder")
+        try expect(fileManager.fileExists(atPath: archive.appendingPathComponent("2024-02/report.pdf").path), "Quick Archive did not move documents into the monthly creation-date folder")
         try expect(fileManager.fileExists(atPath: source.appendingPathComponent("random.tmp").path), "Quick Archive moved an unmatched file")
         try expect(fileManager.fileExists(atPath: source.appendingPathComponent(".hidden-screenshot.png").path), "Quick Archive moved a hidden file")
 
