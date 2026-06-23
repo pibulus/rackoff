@@ -96,6 +96,75 @@ struct RackOffSmokeTest {
         try expect(fileManager.fileExists(atPath: archive.appendingPathComponent("Documents/report.pdf").path), "Smart Clean did not move documents into Documents")
         try expect(fileManager.fileExists(atPath: archive.appendingPathComponent("2024-02/export.csv").path), "Smart Clean did not move archives into monthly folders")
         try expect(fileManager.fileExists(atPath: source.appendingPathComponent("holiday.png").path), "Smart Clean moved media even though Media was set to Skip")
+
+        try await runDailyCatchUpChecks(in: root)
+    }
+
+    /// The daily schedule's promise ("clean every day at 9") only holds because of the
+    /// catch-up check that runs on launch and on wake — a bare 24h Timer doesn't survive
+    /// a laptop sleeping. These guard that catch-up fires exactly when it should and,
+    /// just as importantly, never surprises the user when it shouldn't.
+    @MainActor
+    private static func runDailyCatchUpChecks(in root: URL) async throws {
+        let fileManager = FileManager.default
+        let calendar = Calendar.current
+        let now = Date()
+        let past = calendar.date(byAdding: .minute, value: -2, to: now)!
+        let future = calendar.date(byAdding: .minute, value: 30, to: now)!
+        let pastH = calendar.component(.hour, from: past)
+        let pastM = calendar.component(.minute, from: past)
+        let futH = calendar.component(.hour, from: future)
+        let futM = calendar.component(.minute, from: future)
+
+        func freshManager(_ label: String) throws -> (VacManager, URL) {
+            let base = root.appendingPathComponent("sched-\(label)", isDirectory: true)
+            let desk = base.appendingPathComponent("Desktop", isDirectory: true)
+            let arch = base.appendingPathComponent("Stash", isDirectory: true)
+            try fileManager.createDirectory(at: desk, withIntermediateDirectories: true)
+            try fileManager.createDirectory(at: arch, withIntermediateDirectories: true)
+            let shot = desk.appendingPathComponent("Screenshot 2024-02-03 at 9.00.00 AM.png")
+            try Data("rackoff\n".utf8).write(to: shot)
+            let m = VacManager(loadStoredPreferences: false, sourceFolder: desk, destinationFolder: arch,
+                               requestNotifications: false, sendNotifications: false,
+                               ensureFolderAccess: false, setupSchedule: false, persistPreferences: false)
+            m.fileTypes.indices.forEach { m.fileTypes[$0].isEnabled = true }
+            m.organizationMode = .quickArchive
+            return (m, desk)
+        }
+
+        func remaining(_ desk: URL) -> Int {
+            ((try? fileManager.contentsOfDirectory(atPath: desk.path)) ?? []).filter { !$0.hasPrefix(".") }.count
+        }
+
+        func settle() async { try? await Task.sleep(nanoseconds: 1_200_000_000) }
+
+        // Past-due and never ran → catch-up must clean (the woke-after-9am case).
+        let (m1, desk1) = try freshManager("due")
+        m1.schedule = .daily; m1.dailyCleaningHour = pastH; m1.dailyCleaningMinute = pastM
+        m1.runDailyCatchUpIfNeeded()
+        await settle()
+        try expect(remaining(desk1) == 0, "Daily catch-up did not clean a past-due, never-run desktop")
+
+        // Not yet due today → catch-up must NOT clean (forward timer's job).
+        let (m2, desk2) = try freshManager("notyet")
+        m2.schedule = .daily; m2.dailyCleaningHour = futH; m2.dailyCleaningMinute = futM
+        m2.runDailyCatchUpIfNeeded()
+        await settle()
+        try expect(remaining(desk2) == 1, "Daily catch-up cleaned before the scheduled time")
+
+        // Past-due but already cleaned today → must NOT double-clean.
+        let (m3, desk3) = try freshManager("alreadyran")
+        m3.schedule = .daily; m3.dailyCleaningHour = pastH; m3.dailyCleaningMinute = pastM; m3.lastRun = Date()
+        m3.runDailyCatchUpIfNeeded()
+        await settle()
+        try expect(remaining(desk3) == 1, "Daily catch-up re-cleaned after already running today")
+
+        // Manual mode → catch-up is inert even when a stale time looks past-due.
+        let (m4, desk4) = try freshManager("manual")
+        m4.schedule = .manual; m4.dailyCleaningHour = pastH; m4.dailyCleaningMinute = pastM
+        m4.runDailyCatchUpIfNeeded()
+        await settle()
+        try expect(remaining(desk4) == 1, "Daily catch-up ran while in manual mode")
     }
 
     @MainActor

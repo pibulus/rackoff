@@ -139,7 +139,10 @@ class VacManager: ObservableObject {
     // MARK: - Private Properties
     private var lastOperation: [UndoOperation] = []
     private var saveTimer: Timer?
-    private weak var scheduleTimer: Timer?
+    // Strong, not weak: a weak Timer can be released out from under us, silently
+    // killing the daily schedule. We own its lifetime and invalidate it in deinit.
+    private var scheduleTimer: Timer?
+    private var wakeObserver: NSObjectProtocol?
     private let fileAccessQueue = DispatchQueue(label: "com.pablo.rackoff.fileaccess")
     private let shouldPersistPreferences: Bool
     private let shouldSendNotifications: Bool
@@ -194,14 +197,26 @@ class VacManager: ObservableObject {
         saveTimer = nil
         scheduleTimer?.invalidate()
         scheduleTimer = nil
+        if let wakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
+        }
     }
     
     // MARK: - Public Methods
     
-    private func setupScheduling() {
-        // Cancel existing schedule timer
+    /// - Parameter allowImmediateCatchUp: whether a past-due clean may run right now.
+    ///   True on launch/wake (we genuinely missed it). False when the user just flipped
+    ///   the toggle on — enabling daily-clean at 3pm shouldn't trigger a surprise clean;
+    ///   there was no missed run, the schedule didn't exist this morning.
+    private func setupScheduling(allowImmediateCatchUp: Bool = true) {
+        // Cancel existing schedule timer and wake observer; we rebuild them below.
         scheduleTimer?.invalidate()
-        
+        scheduleTimer = nil
+        if let observer = wakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+            wakeObserver = nil
+        }
+
         switch schedule {
         case .manual:
             // Manual mode - only clean when user clicks button
@@ -212,14 +227,69 @@ class VacManager: ObservableObject {
             Task {
                 let _ = await vacuum()
             }
-            
+
         case .daily:
-            // Schedule daily at 9 AM
+            // Two-pronged so the promise actually holds on a real (sleeping) laptop:
+            //  1. A forward timer for the case where the app is running across 9 AM.
+            //  2. A catch-up check — now, and on every wake — that runs the clean if
+            //     today's scheduled time has already passed and we haven't run since.
+            //     A bare 24h Timer doesn't survive sleep, so the catch-up is what
+            //     makes "daily at 9" true for someone who shuts the lid each night.
             scheduleDailyVacuum()
+            observeWake()
+            if allowImmediateCatchUp {
+                runDailyCatchUpIfNeeded()
+            }
+        }
+    }
+
+    /// Run today's clean if it's due and we haven't done it yet. "Due" = the scheduled
+    /// time has passed today, and our last successful run was before that time.
+    /// Not `private` so the smoke test can exercise this trust-critical path directly.
+    func runDailyCatchUpIfNeeded() {
+        guard schedule == .daily else { return }
+
+        let calendar = Calendar.current
+        let now = Date()
+
+        var components = calendar.dateComponents([.year, .month, .day], from: now)
+        components.hour = dailyCleaningHour
+        components.minute = dailyCleaningMinute
+        components.second = 0
+        guard let todaysScheduledTime = calendar.date(from: components) else { return }
+
+        // Not time yet today — the forward timer will handle it.
+        guard now >= todaysScheduledTime else { return }
+
+        // Already cleaned at or after today's scheduled time — nothing to catch up.
+        if let lastRun, lastRun >= todaysScheduledTime { return }
+
+        Task {
+            let _ = await vacuum()
+        }
+    }
+
+    private func observeWake() {
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                // A bare Timer scheduled before sleep won't have fired; rebuild the
+                // forward timer and catch up on anything we missed while asleep.
+                self.scheduleDailyVacuum()
+                self.runDailyCatchUpIfNeeded()
+            }
         }
     }
     
     private func scheduleDailyVacuum() {
+        // Invalidate any existing timer first — this is called again on wake and after
+        // each fire, so without this we'd stack up timers.
+        scheduleTimer?.invalidate()
+
         let calendar = Calendar.current
         var dateComponents = calendar.dateComponents([.year, .month, .day], from: Date())
         dateComponents.hour = dailyCleaningHour
@@ -248,7 +318,8 @@ class VacManager: ObservableObject {
     
     func updateSchedule(_ newSchedule: Schedule) {
         schedule = newSchedule
-        setupScheduling()
+        // User-initiated: don't fire a clean the instant they enable daily mode.
+        setupScheduling(allowImmediateCatchUp: false)
         savePreferences()
     }
     
@@ -257,9 +328,10 @@ class VacManager: ObservableObject {
         dailyCleaningMinute = minute
         savePreferences()
         
-        // Reschedule if currently using daily schedule
+        // Reschedule if currently using daily schedule. Don't catch up immediately —
+        // adjusting the time picker shouldn't kick off a clean on the spot.
         if schedule == .daily {
-            setupScheduling()
+            setupScheduling(allowImmediateCatchUp: false)
         }
     }
     

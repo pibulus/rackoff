@@ -85,7 +85,7 @@ Each mode took like 20 lines of code. Why not?
 
 - ARM64 only (Intel Macs, we hardly knew ye)
 - Desktop/Documents/Downloads only (sandbox rules)
-- Scheduling exists in `VacManager`, but Preferences needs wiring before we treat it as ready
+- Daily/on-launch scheduling is wired and tested. Daily survives sleep via a catch-up check (on launch + on wake) that uses `lastRun`, since a bare 24h Timer can't be trusted on a laptop. There's no launch-at-login item, so "daily" is honest only within the app's running lifetime — it cleans the first time you're awake past the scheduled time, not while the app is closed.
 - No Windows version (obviously)
 
 ## Writing style notes
