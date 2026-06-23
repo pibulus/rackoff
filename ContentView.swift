@@ -121,8 +121,7 @@ struct ContentView: View {
                     FileTypeRow(
                         fileType: fileType,
                         vacManager: vacManager,
-                        isHovered: hoveredRow == fileType.id,
-                        organizationMode: vacManager.organizationMode
+                        isHovered: hoveredRow == fileType.id
                     )
                     .onHover { hovering in
                         withAnimation(.easeInOut(duration: 0.15)) {
@@ -132,31 +131,14 @@ struct ContentView: View {
                 }
             }
             .padding(.vertical, 8)
-            
-            // Organization mode picker - cleaner
-            HStack(spacing: 6) {
-                OrganizationButton(
-                    title: "Quick",
-                    mode: .quickArchive,
-                    vacManager: vacManager
-                )
-                
-                OrganizationButton(
-                    title: "Sort",
-                    mode: .sortByType,
-                    vacManager: vacManager
-                )
-                
-                OrganizationButton(
-                    title: "Smart",
-                    mode: .smartClean,
-                    vacManager: vacManager
-                )
+
+            // Peek: the carpet bag. Desktop's clean, but the last little while
+            // of your stuff is right here — one click from being back in Finder.
+            if !vacManager.recentlyRacked.isEmpty {
+                PeekStrip(vacManager: vacManager)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            .padding(6)
-            .background(Color(NSColor.controlBackgroundColor).opacity(0.4))
-            .cornerRadius(12)
-            
+
             // Progress indicator for large operations
             if vacManager.isProcessing && vacManager.currentProgress.total > 0 {
                 VStack(spacing: 4) {
@@ -309,60 +291,14 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Organization Mode Button
-/// Custom button for Quick/Sort/Smart selection with hover effects
-struct OrganizationButton: View {
-    let title: String
-    let mode: OrganizationMode
-    @ObservedObject var vacManager: VacManager
-    @State private var isHovered = false
-    
-    var isSelected: Bool { vacManager.organizationMode == mode }
-    
-    var body: some View {
-        Button(action: {
-            withAnimation(RackOffAnimations.quickSpring) {
-                vacManager.organizationMode = mode
-            }
-        }) {
-            Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(isSelected ? .white : (isHovered ? .primary : .secondary))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(
-                    Group {
-                        if isSelected {
-                            RackOffColors.sunset
-                        } else if isHovered {
-                            RackOffColors.hoverBackground
-                        } else {
-                            Color.clear
-                        }
-                    }
-                )
-                .cornerRadius(6)
-                .scaleEffect(isHovered && !isSelected ? 1.05 : 1.0)
-        }
-        .buttonStyle(PlainButtonStyle())
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isHovered = hovering
-            }
-        }
-    }
-}
-
 // MARK: - File Type Toggle Row
 /// Individual file type with toggle, icon, and destination info
 struct FileTypeRow: View {
     let fileType: FileType
     @ObservedObject var vacManager: VacManager
     let isHovered: Bool
-    let organizationMode: OrganizationMode
     @State private var toggleScale: CGFloat = 1.0
-    @State private var showingMenu = false
-    
+
     // Color per file type
     var accentColor: Color {
         switch fileType.name {
@@ -373,69 +309,10 @@ struct FileTypeRow: View {
         default: return Color.accentColor
         }
     }
-    
-    // Destination text based on organization mode
-    var destinationText: String? {
-        switch organizationMode {
-        case .quickArchive:
-            return "→ Daily"
-        case .sortByType:
-            return "→ \(fileType.name)/"
-        case .smartClean:
-            switch fileType.destination {
-            case .daily:
-                return "→ Daily"
-            case .weekly:
-                return "→ Weekly"
-            case .monthly:
-                return "→ Monthly"
-            case .typeFolder:
-                return "→ \(fileType.name)/"
-            case .custom:
-                if let customDest = fileType.customDestination {
-                    return "→ \(customDest.lastPathComponent)"
-                } else {
-                    return "→ Custom"
-                }
-            case .skip:
-                return "→ Skip"
-            }
-        }
-    }
-    
-    @ViewBuilder
-    var contextMenuContent: some View {
-        if organizationMode == .smartClean {
-            Section("Send \(fileType.name) to:") {
-                Button("Daily folders") {
-                    vacManager.updateFileTypeDestination(fileType, destination: .daily)
-                }
-                Button("Weekly folders") {
-                    vacManager.updateFileTypeDestination(fileType, destination: .weekly)
-                }
-                Button("Monthly folders") {
-                    vacManager.updateFileTypeDestination(fileType, destination: .monthly)
-                }
-                Button("\(fileType.name) folder") {
-                    vacManager.updateFileTypeDestination(fileType, destination: .typeFolder)
-                }
-                Button("Custom folder...") {
-                    vacManager.updateFileTypeDestination(fileType, destination: .custom)
-                    // Note: User needs to set custom destination in Preferences
-                }
-            }
-            
-            Section {
-                Button("Skip this type") {
-                    vacManager.updateFileTypeDestination(fileType, destination: .skip)
-                }
-            }
-        }
-    }
-    
+
     var body: some View {
         HStack(spacing: 0) {
-            // Main content area - clickable for menu
+            // Main content area
             HStack {
                 Image(systemName: fileType.icon)
                     .font(.system(size: 16, weight: .medium))
@@ -443,31 +320,23 @@ struct FileTypeRow: View {
                     .frame(width: 24)
                     .scaleEffect(isHovered ? 1.1 : 1.0)
                     .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isHovered)
-                
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(fileType.name)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(fileType.isEnabled ? .primary : .secondary)
-                    
-                    if let destinationText = destinationText, fileType.isEnabled {
-                        Text(destinationText)
+
+                    if fileType.isEnabled {
+                        Text("→ Daily")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(accentColor.opacity(0.8))
                     }
                 }
-                
+
                 Spacer()
             }
             .contentShape(Rectangle())
-            .onTapGesture {
-                if organizationMode == .smartClean {
-                    showingMenu = true
-                }
-            }
-            .contextMenu(menuItems: {
-                contextMenuContent
-            })
-            
+
             // Toggle area - separate hit target with satisfying animation
             Toggle("", isOn: Binding(
                 get: { fileType.isEnabled },
@@ -497,11 +366,132 @@ struct FileTypeRow: View {
         .padding(.trailing, 8)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(isHovered ? 
-                    Color(NSColor.controlBackgroundColor).opacity(0.8) : 
+                .fill(isHovered ?
+                    Color(NSColor.controlBackgroundColor).opacity(0.8) :
                     Color.clear
                 )
         )
         .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Peek Strip
+/// A calm, scrollable look at the last things RackOff tidied away. The point isn't
+/// search — it's reassurance and a little bit of "oh yeah, that day". Click a chip
+/// to jump straight to the file in Finder.
+struct PeekStrip: View {
+    @ObservedObject var vacManager: VacManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                Text("Recently racked")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Text("tap to find")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.secondary.opacity(0.5))
+            }
+            .padding(.horizontal, 4)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(vacManager.recentlyRacked) { item in
+                        PeekChip(item: item)
+                    }
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+            }
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(NSColor.controlBackgroundColor).opacity(0.35))
+        )
+    }
+}
+
+// MARK: - Peek Chip
+/// One tidied file. Icon + name + when, in its file-type colour. Clicking reveals it
+/// in Finder so "where did my stuff go" is always answered.
+struct PeekChip: View {
+    let item: RackedItem
+    @State private var isHovered = false
+
+    var accentColor: Color {
+        switch item.accentName {
+        case "Screenshots": return Color(red: 1.0, green: 0.5, blue: 0.3)
+        case "Documents": return Color(red: 0.4, green: 0.6, blue: 0.9)
+        case "Media": return Color(red: 0.3, green: 0.8, blue: 0.5)
+        case "Archives": return Color(red: 0.8, green: 0.4, blue: 0.8)
+        default: return Color.accentColor
+        }
+    }
+
+    var relativeDate: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: item.date, relativeTo: Date())
+    }
+
+    var body: some View {
+        Button(action: revealInFinder) {
+            VStack(spacing: 6) {
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient(
+                            colors: [accentColor, accentColor.opacity(0.7)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing))
+                        .frame(width: 36, height: 36)
+
+                    Image(systemName: item.icon)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                        .scaleEffect(isHovered ? 1.1 : 1.0)
+                }
+
+                Text(item.name)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                Text(relativeDate)
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+            }
+            .frame(width: 64)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isHovered ?
+                        Color(NSColor.controlBackgroundColor).opacity(0.9) :
+                        Color.clear)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(isHovered ? accentColor.opacity(0.3) : Color.clear, lineWidth: 1)
+                    )
+            )
+            .scaleEffect(isHovered ? 1.04 : 1.0)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .help(item.name)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+
+    private func revealInFinder() {
+        NSWorkspace.shared.activateFileViewerSelecting([item.destination])
     }
 }

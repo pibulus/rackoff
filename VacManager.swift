@@ -56,6 +56,22 @@ struct UndoOperation {
     let timestamp: Date
 }
 
+/// A single file that RackOff has tidied away, kept so the user can still
+/// see — and get back to — their recent stuff. This is the "Peek" carpet bag:
+/// the desktop looks empty, but the last little while of your life is one click away.
+struct RackedItem: Identifiable, Codable {
+    var id = UUID()
+    let name: String
+    let icon: String
+    let accentName: String      // file-type name, drives the dot colour
+    let destination: URL        // where it lives now (reveal-in-Finder target)
+    let date: Date              // the file's own creation date (its place in the diary)
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, icon, accentName, destination, date
+    }
+}
+
 @MainActor
 class VacManager: ObservableObject {
     // MARK: - Published Properties
@@ -104,7 +120,16 @@ class VacManager: ObservableObject {
     @Published var currentProgress: (current: Int, total: Int) = (0, 0)
     @Published var dailyCleaningHour: Int = 9
     @Published var dailyCleaningMinute: Int = 0
-    
+    @Published var totalFilesCleaned: Int = 0
+    @Published var totalBytesSaved: Int64 = 0
+    @Published var totalCleanSessions: Int = 0
+    /// The most recent files RackOff tidied away, newest first. Powers the Peek strip.
+    @Published var recentlyRacked: [RackedItem] = []
+
+    /// How many recently-racked items we remember. Enough to browse "the last little while"
+    /// without turning into a second Photos library.
+    static let maxRecentlyRacked = 40
+
     // MARK: - Private Properties
     private var lastOperation: [UndoOperation] = []
     private var saveTimer: Timer?
@@ -302,10 +327,18 @@ class VacManager: ObservableObject {
             }
         }
         
+        // Drop the restored files from the Peek strip — they're back on the desktop,
+        // so a "recently racked" entry (and its reveal target) would now be a dead end.
+        let restoredDestinations = Set(lastOperation.map { $0.destination })
+        if !restoredDestinations.isEmpty {
+            recentlyRacked.removeAll { restoredDestinations.contains($0.destination) }
+            saveRecentlyRacked()
+        }
+
         // Clear undo history after undoing
         lastOperation = []
         canUndo = false
-        
+
         // Show notification
         showUndoNotification(filesRestored: restoredCount, errors: errors)
         
@@ -332,6 +365,7 @@ class VacManager: ObservableObject {
         var totalBytes: Int64 = 0
         var errors: [String] = []
         var newUndoOperations: [UndoOperation] = []
+        var newlyRacked: [RackedItem] = []
         
         // First, count total files to move
         var totalFiles = 0
@@ -442,6 +476,17 @@ class VacManager: ObservableObject {
                             destination: destination,
                             timestamp: Date()
                         ))
+
+                        // Track for the Peek strip so the user can still see (and reach)
+                        // what just got tidied. Use the file's own creation date so it
+                        // lands in the right spot on the mental timeline.
+                        newlyRacked.append(RackedItem(
+                            name: fileName,
+                            icon: fileType.icon,
+                            accentName: fileType.name,
+                            destination: destination,
+                            date: originalCreationDate ?? Date()
+                        ))
                     } else {
                         errors.append("File move verification failed for: \(fileName)")
                     }
@@ -456,6 +501,23 @@ class VacManager: ObservableObject {
         if !newUndoOperations.isEmpty {
             lastOperation = newUndoOperations
             canUndo = true
+        }
+        
+        // Update lifetime stats
+        if movedCount > 0 {
+            totalFilesCleaned += movedCount
+            totalBytesSaved += totalBytes
+            totalCleanSessions += 1
+        }
+
+        // Prepend this sweep to the Peek strip, newest first, capped so it stays a
+        // glance and not an archive.
+        if !newlyRacked.isEmpty {
+            recentlyRacked = (newlyRacked.reversed() + recentlyRacked)
+            if recentlyRacked.count > Self.maxRecentlyRacked {
+                recentlyRacked = Array(recentlyRacked.prefix(Self.maxRecentlyRacked))
+            }
+            saveRecentlyRacked()
         }
         
         // Update last run and show notification
@@ -725,11 +787,10 @@ class VacManager: ObservableObject {
             self.schedule = schedule
         }
         
-        if let savedOrgMode = UserDefaults.standard.string(forKey: "organizationMode"),
-           let orgMode = OrganizationMode(rawValue: savedOrgMode) {
-            self.organizationMode = orgMode
-        }
-        
+        // Organization mode is intentionally NOT restored. RackOff has one job —
+        // sweep everything to dated folders — so we always stay in .quickArchive.
+        // (The engine still supports other modes for tests, just not the product.)
+
         // Try to load from saved bookmark first (for sandbox)
         if let bookmarkURL = loadDesktopBookmark() {
             self.sourceFolder = bookmarkURL
@@ -765,6 +826,18 @@ class VacManager: ObservableObject {
             self.dailyCleaningMinute = UserDefaults.standard.integer(forKey: "dailyCleaningMinute")
         }
         
+        if UserDefaults.standard.object(forKey: "totalFilesCleaned") != nil {
+            self.totalFilesCleaned = UserDefaults.standard.integer(forKey: "totalFilesCleaned")
+        }
+        
+        if UserDefaults.standard.object(forKey: "totalBytesSaved") != nil {
+            self.totalBytesSaved = Int64(UserDefaults.standard.integer(forKey: "totalBytesSaved"))
+        }
+        
+        if UserDefaults.standard.object(forKey: "totalCleanSessions") != nil {
+            self.totalCleanSessions = UserDefaults.standard.integer(forKey: "totalCleanSessions")
+        }
+        
         // Load file type preferences
         for index in fileTypes.indices {
             let fileType = fileTypes[index]
@@ -789,6 +862,8 @@ class VacManager: ObservableObject {
                 fileTypes[index].extensions = savedExtensions
             }
         }
+
+        loadRecentlyRacked()
     }
     
     private func savePreferences() {
@@ -801,6 +876,9 @@ class VacManager: ObservableObject {
         UserDefaults.standard.set(lastRun, forKey: "lastRun")
         UserDefaults.standard.set(dailyCleaningHour, forKey: "dailyCleaningHour")
         UserDefaults.standard.set(dailyCleaningMinute, forKey: "dailyCleaningMinute")
+        UserDefaults.standard.set(totalFilesCleaned, forKey: "totalFilesCleaned")
+        UserDefaults.standard.set(totalBytesSaved, forKey: "totalBytesSaved")
+        UserDefaults.standard.set(totalCleanSessions, forKey: "totalCleanSessions")
         
         // Save file type preferences
         for fileType in fileTypes {
@@ -822,6 +900,30 @@ class VacManager: ObservableObject {
         }
     }
     
+    private func saveRecentlyRacked() {
+        guard shouldPersistPreferences else { return }
+
+        do {
+            let data = try JSONEncoder().encode(recentlyRacked)
+            UserDefaults.standard.set(data, forKey: "recentlyRacked")
+        } catch {
+            NSLog("⚠️ WARNING: Failed to encode recentlyRacked: \(error.localizedDescription)")
+        }
+    }
+
+    private func loadRecentlyRacked() {
+        guard let data = UserDefaults.standard.data(forKey: "recentlyRacked") else { return }
+
+        do {
+            let items = try JSONDecoder().decode([RackedItem].self, from: data)
+            // Only surface items whose file is still where we left it; a restored or
+            // hand-moved file shouldn't haunt the Peek strip.
+            recentlyRacked = items.filter { FileManager.default.fileExists(atPath: $0.destination.path) }
+        } catch {
+            NSLog("⚠️ WARNING: Failed to decode recentlyRacked: \(error.localizedDescription)")
+        }
+    }
+
     private func debouncedSave() {
         // Cancel existing timer
         saveTimer?.invalidate()

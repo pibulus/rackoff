@@ -41,7 +41,8 @@ struct RackOffSpacing {
 struct RackOffSizes {
     // Main popover
     static let popoverWidth: CGFloat = 340
-    static let popoverHeight: CGFloat = 580
+    // Taller than the bare clean UI needs, to give the Peek strip room when present.
+    static let popoverHeight: CGFloat = 660
     
     // Preferences window
     static let preferencesWidth: CGFloat = 600
