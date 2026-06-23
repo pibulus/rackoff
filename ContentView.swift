@@ -15,17 +15,16 @@ struct ContentView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var lastCleanResult: (files: Int, bytes: Int64) = (0, 0)
+    @State private var successPop: CGFloat = 1.0   // juicy bounce on a finished clean
     
+    // Feeling first, number second. The payoff is the empty desktop, not the stat —
+    // the count rides along quietly so it still feels concrete.
     var successMessage: String {
         if lastCleanResult.files == 0 {
-            return "Already Clean!"
-        } else if lastCleanResult.bytes > 0 {
-            let formatter = ByteCountFormatter()
-            formatter.countStyle = .file
-            let sizeString = formatter.string(fromByteCount: lastCleanResult.bytes)
-            return "\(lastCleanResult.files) files • \(sizeString)"
+            return "Already spotless ✨"
         } else {
-            return "\(lastCleanResult.files) files cleaned"
+            let n = lastCleanResult.files
+            return "All clear ✨ · \(n) file\(n == 1 ? "" : "s")"
         }
     }
     
@@ -185,6 +184,7 @@ struct ContentView: View {
                         } else if showSuccess {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 16, weight: .semibold))
+                                .scaleEffect(successPop)
                                 .transition(.scale.combined(with: .opacity))
                         } else {
                             Image(systemName: "wand.and.stars")
@@ -219,7 +219,7 @@ struct ContentView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .disabled(isVacuuming)
-            .scaleEffect(buttonHovered && !isVacuuming ? 1.05 : (isVacuuming ? 0.98 : 1.0))
+            .scaleEffect((buttonHovered && !isVacuuming ? 1.05 : (isVacuuming ? 0.98 : 1.0)) * successPop)
             .accessibilityLabel(isVacuuming ? "Cleaning in progress" : "Clean desktop now")
             .onHover { hovering in
                 withAnimation(RackOffAnimations.quickSpring) {
@@ -282,9 +282,25 @@ struct ContentView: View {
                     }
                 }
             }
-            
+
+            // Juicy pop: a quick bounce on the button + sparkle the moment it lands.
+            // Calm-but-alive — one satisfying beat, not confetti.
+            if result.errors.isEmpty {
+                await MainActor.run {
+                    withAnimation(.spring(response: 0.2, dampingFraction: 0.4)) {
+                        successPop = 1.12
+                    }
+                }
+                try? await Task.sleep(nanoseconds: 180_000_000)
+                await MainActor.run {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) {
+                        successPop = 1.0
+                    }
+                }
+            }
+
             // Reset states after delay
-            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3s
+            try? await Task.sleep(nanoseconds: 2_800_000_000) // ~3s total with the pop above
             
             await MainActor.run {
                 withAnimation(.easeOut(duration: 0.3)) {
