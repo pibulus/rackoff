@@ -49,12 +49,18 @@ struct RackOffSmokeTest {
         try makeFixtures(in: source)
         manager.fileTypes.indices.forEach { manager.fileTypes[$0].isEnabled = true }
 
+        // Derive the expected month folder the same way the engine does, so this stays
+        // correct regardless of the test machine's locale (month name is localized).
+        let monthFormatter = DateFormatter()
+        monthFormatter.dateFormat = "yyyy-MM MMMM"
+        let monthFolder = monthFormatter.string(from: fixtureDate())
+
         manager.organizationMode = .quickArchive
         let quickResult = await manager.vacuum()
         try expect(quickResult.errors.isEmpty, "Quick Archive returned errors: \(quickResult.errors)")
         try expect(quickResult.movedCount == 5, "Quick Archive moved \(quickResult.movedCount) files instead of 5")
-        try expect(fileManager.fileExists(atPath: archive.appendingPathComponent("2024-02/Screenshot 2024-02-03 at 12.00.00 PM.png").path), "Quick Archive did not move screenshots into the monthly creation-date folder")
-        try expect(fileManager.fileExists(atPath: archive.appendingPathComponent("2024-02/report.pdf").path), "Quick Archive did not move documents into the monthly creation-date folder")
+        try expect(fileManager.fileExists(atPath: archive.appendingPathComponent("\(monthFolder)/Screenshot 2024-02-03 at 12.00.00 PM.png").path), "Quick Archive did not move screenshots into the monthly creation-date folder")
+        try expect(fileManager.fileExists(atPath: archive.appendingPathComponent("\(monthFolder)/report.pdf").path), "Quick Archive did not move documents into the monthly creation-date folder")
         try expect(fileManager.fileExists(atPath: source.appendingPathComponent("random.tmp").path), "Quick Archive moved an unmatched file")
         try expect(fileManager.fileExists(atPath: source.appendingPathComponent(".hidden-screenshot.png").path), "Quick Archive moved a hidden file")
 
@@ -98,22 +104,28 @@ struct RackOffSmokeTest {
         manager.fileTypes[index].destination = destination
     }
 
-    private static func makeFixtures(in source: URL) throws {
-        let fixtureDate = Calendar(identifier: .gregorian).date(from: DateComponents(
+    /// The single creation date shared by every fixture. Used both to stamp the files
+    /// and to compute the expected month folder, so the two can never drift apart.
+    private static func fixtureDate() -> Date {
+        Calendar(identifier: .gregorian).date(from: DateComponents(
             timeZone: TimeZone(secondsFromGMT: 0),
             year: 2024,
             month: 2,
             day: 3,
             hour: 12
         )) ?? Date()
+    }
 
-        try writeFixture("Screenshot 2024-02-03 at 12.00.00 PM.png", in: source, date: fixtureDate)
-        try writeFixture("CleanShot 2024-02-03 at 12.01.00 PM.png", in: source, date: fixtureDate)
-        try writeFixture("report.pdf", in: source, date: fixtureDate)
-        try writeFixture("holiday.png", in: source, date: fixtureDate)
-        try writeFixture("export.csv", in: source, date: fixtureDate)
-        try writeFixture("random.tmp", in: source, date: fixtureDate)
-        try writeFixture(".hidden-screenshot.png", in: source, date: fixtureDate)
+    private static func makeFixtures(in source: URL) throws {
+        let date = fixtureDate()
+
+        try writeFixture("Screenshot 2024-02-03 at 12.00.00 PM.png", in: source, date: date)
+        try writeFixture("CleanShot 2024-02-03 at 12.01.00 PM.png", in: source, date: date)
+        try writeFixture("report.pdf", in: source, date: date)
+        try writeFixture("holiday.png", in: source, date: date)
+        try writeFixture("export.csv", in: source, date: date)
+        try writeFixture("random.tmp", in: source, date: date)
+        try writeFixture(".hidden-screenshot.png", in: source, date: date)
         try FileManager.default.createDirectory(at: source.appendingPathComponent("Screenshot folder", isDirectory: true), withIntermediateDirectories: true)
     }
 

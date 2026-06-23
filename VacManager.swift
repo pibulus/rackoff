@@ -569,8 +569,13 @@ class VacManager: ObservableObject {
             // Everything goes to monthly folders based on the file's own creation
             // date. Monthly is the sweet spot for browsing later — ~12 folders a year,
             // each with real content to scroll, instead of a wall of near-empty days.
+            //
+            // Format is "2026-06 June": the yyyy-MM prefix keeps Finder sorting the
+            // months chronologically, while the month name makes the folder read like
+            // a human wrote it, not a robot. The month name is localized, so it's
+            // friendly in whatever language the user runs macOS in.
             let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM"
+            dateFormatter.dateFormat = "yyyy-MM MMMM"
             let dateString = dateFormatter.string(from: dateToUse)
             resultFolder = destinationFolder.appendingPathComponent(dateString)
 
