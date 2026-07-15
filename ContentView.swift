@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var errorMessage = ""
     @State private var lastCleanResult: (files: Int, bytes: Int64) = (0, 0)
     @State private var successPop: CGFloat = 1.0   // juicy bounce on a finished clean
+    @State private var stashHovered = false
     
     // Feeling first, number second. The payoff is the empty desktop, not the stat —
     // the count rides along quietly so it still feels concrete.
@@ -162,9 +163,14 @@ struct ContentView: View {
                             }
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(RackOffColors.sunset)
+                            .opacity(stashHovered ? 1.0 : 0.7)
+                            .scaleEffect(stashHovered ? 1.05 : 1.0)
                         }
                         .buttonStyle(PlainButtonStyle())
                         .onHover { hovering in
+                            withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                                stashHovered = hovering
+                            }
                             if hovering {
                                 NSCursor.pointingHand.push()
                             } else {
