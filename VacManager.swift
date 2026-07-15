@@ -646,10 +646,17 @@ class VacManager: ObservableObject {
             // months chronologically, while the month name makes the folder read like
             // a human wrote it, not a robot. The month name is localized, so it's
             // friendly in whatever language the user runs macOS in.
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM MMMM"
-            let dateString = dateFormatter.string(from: dateToUse)
-            resultFolder = destinationFolder.appendingPathComponent(dateString)
+            let yearFormatter = DateFormatter()
+            yearFormatter.dateFormat = "yyyy"
+            let yearString = yearFormatter.string(from: dateToUse)
+            
+            let monthFormatter = DateFormatter()
+            monthFormatter.dateFormat = "MM-MMMM" // e.g. "07-July"
+            let monthString = monthFormatter.string(from: dateToUse)
+            
+            resultFolder = destinationFolder
+                .appendingPathComponent(yearString)
+                .appendingPathComponent(monthString)
 
         case .sortByType:
             // Everything goes to type folders
@@ -671,10 +678,17 @@ class VacManager: ObservableObject {
                 resultFolder = destinationFolder.appendingPathComponent(dateString)
 
             case .monthly:
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "yyyy-MM"
-                let dateString = dateFormatter.string(from: dateToUse)
-                resultFolder = destinationFolder.appendingPathComponent(dateString)
+                let yearFormatter = DateFormatter()
+                yearFormatter.dateFormat = "yyyy"
+                let yearString = yearFormatter.string(from: dateToUse)
+                
+                let monthFormatter = DateFormatter()
+                monthFormatter.dateFormat = "MM-MMMM" // e.g. "07-July"
+                let monthString = monthFormatter.string(from: dateToUse)
+                
+                resultFolder = destinationFolder
+                    .appendingPathComponent(yearString)
+                    .appendingPathComponent(monthString)
 
             case .typeFolder:
                 resultFolder = destinationFolder.appendingPathComponent(fileType.name)

@@ -51,9 +51,13 @@ struct RackOffSmokeTest {
 
         // Derive the expected month folder the same way the engine does, so this stays
         // correct regardless of the test machine's locale (month name is localized).
+        let yearFormatter = DateFormatter()
+        yearFormatter.dateFormat = "yyyy"
+        let yearFolder = yearFormatter.string(from: fixtureDate())
+        
         let monthFormatter = DateFormatter()
-        monthFormatter.dateFormat = "yyyy-MM MMMM"
-        let monthFolder = monthFormatter.string(from: fixtureDate())
+        monthFormatter.dateFormat = "MM-MMMM"
+        let monthFolder = "\(yearFolder)/\(monthFormatter.string(from: fixtureDate()))"
 
         manager.organizationMode = .quickArchive
         let quickResult = await manager.vacuum()
@@ -94,7 +98,7 @@ struct RackOffSmokeTest {
         try expect(smartResult.movedCount == 4, "Smart Clean moved \(smartResult.movedCount) files instead of 4")
         try expect(fileManager.fileExists(atPath: archive.appendingPathComponent("2024-02-03/Screenshot 2024-02-03 at 12.00.00 PM.png").path), "Smart Clean did not move screenshots into daily folders")
         try expect(fileManager.fileExists(atPath: archive.appendingPathComponent("Documents/report.pdf").path), "Smart Clean did not move documents into Documents")
-        try expect(fileManager.fileExists(atPath: archive.appendingPathComponent("2024-02/export.csv").path), "Smart Clean did not move archives into monthly folders")
+        try expect(fileManager.fileExists(atPath: archive.appendingPathComponent("2024/02-February/export.csv").path), "Smart Clean did not move archives into monthly folders")
         try expect(fileManager.fileExists(atPath: source.appendingPathComponent("holiday.png").path), "Smart Clean moved media even though Media was set to Skip")
 
         try await runDailyCatchUpChecks(in: root)
