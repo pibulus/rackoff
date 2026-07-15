@@ -67,12 +67,12 @@ struct ContentView: View {
                 Spacer()
                 
                 // RackOff branding - centered
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     Image(systemName: "sparkles")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(RackOffColors.sunset)
                     Text("RackOff")
-                        .font(.system(size: 22, weight: .heavy, design: .rounded))
+                        .font(.system(size: 28, weight: .heavy, design: .rounded))
                         .foregroundStyle(RackOffColors.sunset)
                 }
                 
@@ -143,12 +143,58 @@ struct ContentView: View {
                     }
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
-            } else if vacManager.recentlyRacked.isEmpty {
-                PeekEmptyState()
-                    .transition(.opacity)
             } else {
-                PeekStrip(vacManager: vacManager)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                        Text("Recently racked")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.secondary)
+                        
+                        Spacer()
+                        
+                        Button(action: openStash) {
+                            HStack(spacing: 3) {
+                                Text("Open Stash")
+                                Image(systemName: "arrow.up.forward.app")
+                            }
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(RackOffColors.sunset)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .onHover { hovering in
+                            if hovering {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.pop()
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                    
+                    if vacManager.recentlyRacked.isEmpty {
+                        PeekEmptyState()
+                            .transition(.opacity)
+                    } else {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(vacManager.recentlyRacked) { item in
+                                    PeekChip(item: item)
+                                }
+                            }
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                        }
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(NSColor.controlBackgroundColor).opacity(0.35))
+                        )
+                    }
+                }
             }
 
             // Progress indicator for large operations
@@ -253,24 +299,6 @@ struct ContentView: View {
                 .transition(.opacity.combined(with: .scale))
             }
 
-            // Quick access to the Stash folder
-            Button(action: openStash) {
-                HStack(spacing: 6) {
-                    Image(systemName: "folder.fill")
-                        .font(.system(size: 11, weight: .medium))
-                    Text("Open Stash")
-                        .font(.system(size: 11, weight: .medium))
-                }
-                .foregroundColor(.secondary.opacity(0.7))
-            }
-            .buttonStyle(PlainButtonStyle())
-            .onHover { hovering in
-                if hovering {
-                    NSCursor.pointingHand.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
         }
         .padding(.horizontal, 20)
         .padding(.top, 20)
@@ -471,48 +499,6 @@ struct PeekEmptyState: View {
                         )
                         .foregroundColor(.secondary.opacity(0.15))
                 )
-        )
-    }
-}
-
-// MARK: - Peek Strip
-/// A calm, scrollable look at the last things RackOff tidied away. The point isn't
-/// search — it's reassurance and a little bit of "oh yeah, that day". Click a chip
-/// to jump straight to the file in Finder.
-struct PeekStrip: View {
-    @ObservedObject var vacManager: VacManager
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "clock.arrow.circlepath")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.secondary)
-                Text("Recently racked")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.secondary)
-                Spacer()
-                Text("tap to find")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.secondary.opacity(0.5))
-            }
-            .padding(.horizontal, 4)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(vacManager.recentlyRacked) { item in
-                        PeekChip(item: item)
-                    }
-                }
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
-            }
-        }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 4)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(NSColor.controlBackgroundColor).opacity(0.35))
         )
     }
 }
