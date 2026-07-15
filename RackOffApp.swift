@@ -62,15 +62,23 @@ struct AboutView: View {
 }
 
 enum MenuIconStyle: String, CaseIterable {
+    case broom = "broom"
     case sparkles = "sparkles"
-    case circle = "circle" 
-    case dot = "dot"
+    case wandStars = "wand.and.stars"
+    case wind = "wind"
+    case rays = "rays"
+    case dottedCircle = "circle.dotted"
+    
+    var symbolName: String { rawValue }
     
     var displayName: String {
         switch self {
+        case .broom: return "🧹 Broom"
         case .sparkles: return "✨ Sparkles"
-        case .circle: return "○ Circle"
-        case .dot: return "● Dot"
+        case .wandStars: return "🪄 Wand & Stars"
+        case .wind: return "💨 Wind"
+        case .rays: return "☀️ Rays"
+        case .dottedCircle: return "○ Circle"
         }
     }
 }
@@ -95,8 +103,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var vacManager: VacManager = {
         return VacManager()
     }()
-    var currentIconStyle: MenuIconStyle = .sparkles
-    var isPressed: Bool = false
+    var currentIconStyle: MenuIconStyle = .broom
     var contextMenu: NSMenu!
     var undoMenuItem: NSMenuItem!
     var launchAtLoginItem: NSMenuItem!
@@ -225,12 +232,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func flashIcon() {
-        isPressed = true
-        statusItem.button?.image = createIconImage()
+        statusItem.button?.alphaValue = 0.4
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.isPressed = false
-            self.statusItem.button?.image = self.createIconImage()
+            self.statusItem.button?.alphaValue = 1.0
         }
     }
     
@@ -313,104 +318,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func createIconImage() -> NSImage {
-        let size = NSSize(width: 18, height: 18)
-        
-        return NSImage(size: size, flipped: false) { rect in
-            // Clear background
-            NSColor.clear.setFill()
-            rect.fill()
-            
-            if let context = NSGraphicsContext.current?.cgContext {
-                switch self.currentIconStyle {
-                case .sparkles:
-                    self.drawSparkles(context: context, size: size)
-                case .circle:
-                    self.drawCircle(context: context, size: size)
-                case .dot:
-                    self.drawDot(context: context, size: size)
-                }
-            }
-            
-            return true
+        guard let image = NSImage(systemSymbolName: currentIconStyle.symbolName, accessibilityDescription: "RackOff") else {
+            return NSImage(size: NSSize(width: 18, height: 18))
         }
-    }
-    
-    private func drawSparkles(context: CGContext, size: NSSize) {
-        let color = darkenIfPressed(NSColor.controlAccentColor)
-        
-        // Main star (center)
-        drawCGStar(context: context, 
-                  center: CGPoint(x: size.width * 0.5, y: size.height * 0.5),
-                  size: size.width * 0.4,
-                  color: color.cgColor)
-        
-        // Small stars around it
-        drawCGStar(context: context,
-                  center: CGPoint(x: size.width * 0.2, y: size.height * 0.7),
-                  size: size.width * 0.15,
-                  color: color.cgColor)
-        
-        drawCGStar(context: context,
-                  center: CGPoint(x: size.width * 0.8, y: size.height * 0.2),
-                  size: size.width * 0.12,
-                  color: color.cgColor)
-        
-        drawCGStar(context: context,
-                  center: CGPoint(x: size.width * 0.75, y: size.height * 0.75),
-                  size: size.width * 0.13,
-                  color: color.cgColor)
-    }
-    
-    private func drawCircle(context: CGContext, size: NSSize) {
-        let color = darkenIfPressed(NSColor.controlAccentColor)
-        context.setFillColor(color.cgColor)
-        
-        let radius = size.width * 0.3
-        let center = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
-        let rect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
-        
-        context.fillEllipse(in: rect)
-    }
-    
-    private func drawDot(context: CGContext, size: NSSize) {
-        let color = darkenIfPressed(NSColor.controlAccentColor)
-        context.setFillColor(color.cgColor)
-        
-        let radius = size.width * 0.2
-        let center = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
-        let rect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
-        
-        context.fillEllipse(in: rect)
-    }
-    
-    private func darkenIfPressed(_ color: NSColor) -> NSColor {
-        return isPressed ? color.withSystemEffect(.pressed) : color
-    }
-    
-    private func drawCGStar(context: CGContext, center: CGPoint, size: CGFloat, color: CGColor) {
-        context.setFillColor(color)
-        
-        let radius = size / 2
-        let innerRadius = radius * 0.4
-        let points = 4
-        
-        let path = CGMutablePath()
-        
-        for i in 0..<points * 2 {
-            let angle = CGFloat(i) * .pi / CGFloat(points)
-            let currentRadius = i % 2 == 0 ? radius : innerRadius
-            let x = center.x + cos(angle) * currentRadius
-            let y = center.y + sin(angle) * currentRadius
-            
-            if i == 0 {
-                path.move(to: CGPoint(x: x, y: y))
-            } else {
-                path.addLine(to: CGPoint(x: x, y: y))
-            }
-        }
-        path.closeSubpath()
-        
-        context.addPath(path)
-        context.fillPath()
+        let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .medium)
+        let configured = image.withSymbolConfiguration(config) ?? image
+        configured.isTemplate = true
+        return configured
     }
 }

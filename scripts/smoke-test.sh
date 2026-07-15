@@ -13,7 +13,7 @@ swiftc \
     "$ROOT_DIR/VacManager.swift" \
     "$ROOT_DIR/Tests/RackOffSmokeTest.swift" \
     -o "$BUILD_DIR/RackOffSmokeTest" \
-    -target arm64-apple-macos12.0 \
+    -target arm64-apple-macos13.0 \
     -framework SwiftUI \
     -framework AppKit \
     -framework UserNotifications \
