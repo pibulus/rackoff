@@ -10,10 +10,11 @@ BUNDLE_ID="com.pablo.rackoff"
 VERSION="1.0"
 BUILD_NUMBER="1"
 
-# Code signing identity (use "-" for ad-hoc signing during development).
-# For Mac App Store distribution, use Apple Distribution or Mac App Distribution.
-# Developer ID is for direct distribution outside the Mac App Store.
-CODESIGN_IDENTITY="-"
+# Code signing identity.
+# - Ad-hoc ("-") works for local dev only (no distribution).
+# - The Developer ID cert produces a DMG you can notarize for direct downloads.
+# - An Apple Distribution cert is needed for Mac App Store uploads.
+CODESIGN_IDENTITY="Developer ID Application: Pablo Alvarado (V433H655PN)"
 
 echo "🛠 Building $APP_NAME..."
 

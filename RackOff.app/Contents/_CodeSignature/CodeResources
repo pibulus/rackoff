@@ -19,10 +19,10 @@
 		<dict>
 			<key>cdhash</key>
 			<data>
-			KdaNBSKOjDfPE7eAiYOYFyy5ENI=
+			IeehbfpBKIBxGzEAO69bAFnjWew=
 			</data>
 			<key>requirement</key>
-			<string>cdhash H"29d68d05228e8c37cf13b780898398172cb910d2"</string>
+			<string>identifier RackOff and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = V433H655PN</string>
 		</dict>
 		<key>Resources/PrivacyInfo.xcprivacy</key>
 		<dict>
