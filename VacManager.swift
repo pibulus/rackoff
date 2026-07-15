@@ -335,6 +335,11 @@ class VacManager: ObservableObject {
         }
     }
     
+    func updateOrganizationMode(_ newMode: OrganizationMode) {
+        organizationMode = newMode
+        savePreferences()
+    }
+    
     func toggleFileType(_ fileType: FileType, enabled: Bool) {
         if let index = fileTypes.firstIndex(where: { $0.id == fileType.id }) {
             fileTypes[index].isEnabled = enabled

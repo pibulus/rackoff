@@ -422,6 +422,47 @@ struct FoldersPreferences: View {
                         .fill(Color(NSColor.controlBackgroundColor).opacity(0.5))
                 )
             }
+            
+            Divider()
+            
+            // Clean organization style section
+            VStack(alignment: .leading, spacing: 16) {
+                Label("Organization Style", systemImage: "square.grid.2x2.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(RackOffColors.sunset)
+                
+                Text("Choose how RackOff organizes swept files inside your stash:")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                
+                HStack(spacing: 12) {
+                    // Option 1: Date Folders
+                    OrgStyleCard(
+                        title: "Date Folders",
+                        subtitle: "Organized by Year & Month\n(e.g., 2026/07-July/file.png)",
+                        icon: "calendar",
+                        isSelected: vacManager.organizationMode == .quickArchive,
+                        action: {
+                            withAnimation(RackOffAnimations.quickSpring) {
+                                vacManager.updateOrganizationMode(.quickArchive)
+                            }
+                        }
+                    )
+                    
+                    // Option 2: Category Folders
+                    OrgStyleCard(
+                        title: "Category Folders",
+                        subtitle: "Organized by File Category\n(e.g., Screenshots/file.png)",
+                        icon: "folder.badge.gearshape",
+                        isSelected: vacManager.organizationMode == .sortByType,
+                        action: {
+                            withAnimation(RackOffAnimations.quickSpring) {
+                                vacManager.updateOrganizationMode(.sortByType)
+                            }
+                        }
+                    )
+                }
+            }
 
             Spacer()
         }
@@ -793,5 +834,96 @@ struct LinkButtonStyle: ButtonStyle {
         configuration.label
             .foregroundColor(configuration.isPressed ? .accentColor.opacity(0.7) : .accentColor)
             .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+    }
+}
+
+// Card for selecting organization style
+struct OrgStyleCard: View {
+    let title: String
+    let subtitle: String
+    let icon: String
+    let isSelected: Bool
+    let action: () -> Void
+    @State private var isHovered = false
+    
+    // Decompose complex style expressions to prevent Swift compiler typecheck timeout
+    private var circleFill: Color {
+        isSelected ? Color.orange.opacity(0.15) : Color.secondary.opacity(0.1)
+    }
+    
+    private var iconColor: LinearGradient {
+        isSelected ? RackOffColors.sunset : LinearGradient(colors: [.secondary], startPoint: .leading, endPoint: .trailing)
+    }
+    
+    private var titleColor: Color {
+        isSelected ? .primary : .secondary
+    }
+    
+    private var bgFill: Color {
+        Color(NSColor.controlBackgroundColor).opacity(isSelected ? 0.5 : 0.15)
+    }
+    
+    private var borderStrokeColor: Color {
+        isSelected ? Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.4) : Color.clear
+    }
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    ZStack {
+                        Circle()
+                            .fill(circleFill)
+                            .frame(width: 32, height: 32)
+                        
+                        Image(systemName: icon)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(iconColor)
+                    }
+                    
+                    Spacer()
+                    
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(RackOffColors.sunset)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
+                
+                Text(title)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(titleColor)
+                
+                Text(subtitle)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary.opacity(0.8))
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(bgFill)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(borderStrokeColor, lineWidth: 2)
+            )
+            .scaleEffect(isHovered ? 1.02 : 1.0)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onHover { hovering in
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
+                isHovered = hovering
+            }
+            if hovering {
+                NSCursor.pointingHand.push()
+            } else {
+                NSCursor.pop()
+            }
+        }
     }
 }

@@ -414,7 +414,7 @@ struct FileTypeRow: View {
                         .foregroundColor(fileType.isEnabled ? .primary : .secondary)
 
                     if fileType.isEnabled {
-                        Text("→ \(destinationLabel(for: fileType.destination))")
+                        Text("→ \(destinationLabel(for: fileType))")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(accentColor.opacity(0.8))
                     }
@@ -461,12 +461,21 @@ struct FileTypeRow: View {
         .contentShape(Rectangle())
     }
 
-    private func destinationLabel(for destination: FileDestination) -> String {
-        switch destination {
-        case .daily: return "Daily folders"
-        case .typeFolder: return "Type folders"
-        case .skip: return "Skip"
-        default: return destination.rawValue
+    private func destinationLabel(for fileType: FileType) -> String {
+        switch vacManager.organizationMode {
+        case .quickArchive:
+            return "Nested by Date"
+        case .sortByType:
+            return "Category Folder (\(fileType.name))"
+        case .smartClean:
+            switch fileType.destination {
+            case .daily: return "Daily folders"
+            case .weekly: return "Weekly folders"
+            case .monthly: return "Monthly folders"
+            case .typeFolder: return "Category folder"
+            case .custom: return "Custom folder"
+            case .skip: return "Skip"
+            }
         }
     }
 }
