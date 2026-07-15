@@ -31,7 +31,7 @@ struct ContentView: View {
     // Use consistent brand colors
     
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 12) {
             // Header with settings and exit buttons
             HStack {
                 Button(action: {
@@ -67,18 +67,13 @@ struct ContentView: View {
                 Spacer()
                 
                 // RackOff branding - centered
-                VStack(spacing: 4) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundStyle(RackOffColors.sunset)
-                        Text("RackOff")
-                            .font(.system(size: 28, weight: .heavy, design: .rounded))
-                            .foregroundStyle(RackOffColors.sunset)
-                    }
-                    Text("Desktop cleaning that gets it")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(RackOffColors.sunset)
+                    Text("RackOff")
+                        .font(.system(size: 22, weight: .heavy, design: .rounded))
+                        .foregroundStyle(RackOffColors.sunset)
                 }
                 
                 Spacer()
@@ -129,7 +124,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, 2)
 
             // Peek: the carpet bag. Desktop's clean, but the last little while
             // of your stuff is right here — one click from being back in Finder.
@@ -244,13 +239,36 @@ struct ContentView: View {
                 .cornerRadius(6)
                 .transition(.opacity.combined(with: .scale))
             }
+
+            // Quick access to the Stash folder
+            Button(action: openStash) {
+                HStack(spacing: 6) {
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 11, weight: .medium))
+                    Text("Open Stash")
+                        .font(.system(size: 11, weight: .medium))
+                }
+                .foregroundColor(.secondary.opacity(0.7))
+            }
+            .buttonStyle(PlainButtonStyle())
+            .onHover { hovering in
+                if hovering {
+                    NSCursor.pointingHand.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
         }
-        .padding(.horizontal, RackOffSpacing.popoverPadding)
-        .padding(.top, 36)
-        .padding(.bottom, 28)
+        .padding(.horizontal, 20)
+        .padding(.top, 20)
+        .padding(.bottom, 16)
         .frame(width: RackOffSizes.popoverWidth, height: RackOffSizes.popoverHeight)
     }
     
+    func openStash() {
+        NSWorkspace.shared.open(vacManager.destinationFolder)
+    }
+
     func performVacuum() {
         withAnimation(RackOffAnimations.quickSpring) {
             isVacuuming = true
@@ -382,9 +400,9 @@ struct FileTypeRow: View {
             .scaleEffect(toggleScale * 0.85)
             .padding(.trailing, 8)
         }
-        .padding(.vertical, 12)
-        .padding(.leading, 16)
-        .padding(.trailing, 8)
+        .padding(.vertical, 8)
+        .padding(.leading, 14)
+        .padding(.trailing, 6)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(isHovered ?
