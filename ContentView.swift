@@ -126,11 +126,24 @@ struct ContentView: View {
             }
             .padding(.vertical, 2)
 
-            // Peek: the carpet bag. Desktop's clean, but the last little while
-            // of your stuff is right here — one click from being back in Finder.
-            // Before the first clean we show a quiet hint instead, so a new user
-            // knows up front their stuff gets put away, not thrown away.
-            if vacManager.recentlyRacked.isEmpty {
+            // Peek: the carpet bag or success banner
+            if showSuccess && lastCleanResult.files > 0 {
+                SuccessBannerView(
+                    filesCount: lastCleanResult.files,
+                    onOpenStash: {
+                        openStash()
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            showSuccess = false
+                        }
+                    },
+                    onDismiss: {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            showSuccess = false
+                        }
+                    }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+            } else if vacManager.recentlyRacked.isEmpty {
                 PeekEmptyState()
                     .transition(.opacity)
             } else {
@@ -187,7 +200,7 @@ struct ContentView: View {
                                 .rotationEffect(.degrees(buttonHovered ? -10 : 0))
                                 .animation(.spring(response: 0.3, dampingFraction: 0.6), value: buttonHovered)
                         }
-                        Text(isVacuuming ? "Cleaning..." : (showSuccess ? successMessage : "Clean Now"))
+                        Text(isVacuuming ? "Cleaning..." : (showSuccess && lastCleanResult.files == 0 ? successMessage : "Clean Now"))
                             .font(.system(size: 17, weight: .bold))
                     }
                     .foregroundColor(.white)
@@ -317,8 +330,9 @@ struct ContentView: View {
                 }
             }
 
-            // Reset states after delay
-            try? await Task.sleep(nanoseconds: 2_800_000_000) // ~3s total with the pop above
+            // Reset states after delay (longer for completion banner so they can click it)
+            let delayNanoseconds: UInt64 = result.movedCount > 0 ? 8_000_000_000 : 2_800_000_000
+            try? await Task.sleep(nanoseconds: delayNanoseconds)
             
             await MainActor.run {
                 withAnimation(.easeOut(duration: 0.3)) {
@@ -579,5 +593,90 @@ struct PeekChip: View {
 
     private func revealInFinder() {
         NSWorkspace.shared.activateFileViewerSelecting([item.destination])
+    }
+}
+
+// MARK: - Success Banner View
+/// A premium card that slides/fades in when a clean completes, prompting the user
+/// to open their stash in Finder.
+struct SuccessBannerView: View {
+    let filesCount: Int
+    let onOpenStash: () -> Void
+    let onDismiss: () -> Void
+    @State private var openHovered = false
+    @State private var dismissHovered = false
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(RackOffColors.sunset.opacity(0.15))
+                    .frame(width: 38, height: 38)
+                
+                Image(systemName: "sparkles")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(RackOffColors.sunset)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Swept \(filesCount) file\(filesCount == 1 ? "" : "s")!")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.primary)
+                Text("Organized safe and sound.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Button(action: onOpenStash) {
+                Text("Show in Finder")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        LinearGradient(
+                            colors: openHovered ? 
+                                [Color(red: 1.0, green: 0.5, blue: 0.5), Color(red: 1.0, green: 0.7, blue: 0.3)] :
+                                [Color(red: 1.0, green: 0.4, blue: 0.4), Color(red: 1.0, green: 0.6, blue: 0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .cornerRadius(8)
+                    .shadow(color: openHovered ? Color(red: 1.0, green: 0.5, blue: 0.3).opacity(0.3) : Color.clear, radius: 4, y: 2)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .scaleEffect(openHovered ? 1.03 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.5), value: openHovered)
+            .onHover { hovering in
+                openHovered = hovering
+            }
+            
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.secondary.opacity(0.6))
+                    .padding(6)
+                    .background(dismissHovered ? Color.secondary.opacity(0.1) : Color.clear)
+                    .clipShape(Circle())
+            }
+            .buttonStyle(PlainButtonStyle())
+            .onHover { hovering in
+                dismissHovered = hovering
+            }
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(NSColor.controlBackgroundColor).opacity(0.4))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(RackOffColors.sunset.opacity(0.2), lineWidth: 1)
+                )
+        )
+        .frame(height: 100)
     }
 }
