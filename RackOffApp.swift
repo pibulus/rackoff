@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 struct AboutView: View {
     var body: some View {
@@ -98,6 +99,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var isPressed: Bool = false
     var contextMenu: NSMenu!
     var undoMenuItem: NSMenuItem!
+    var launchAtLoginItem: NSMenuItem!
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Load icon style preference
@@ -166,6 +168,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         contextMenu.addItem(NSMenuItem.separator())
         contextMenu.addItem(NSMenuItem(title: "Preferences...", action: #selector(showPreferences), keyEquivalent: ","))
+        
+        launchAtLoginItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
+        launchAtLoginItem.target = self
+        launchAtLoginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        contextMenu.addItem(launchAtLoginItem)
+        
         contextMenu.addItem(NSMenuItem.separator())
         contextMenu.addItem(NSMenuItem(title: "About RackOff", action: #selector(showAbout), keyEquivalent: ""))
         contextMenu.addItem(NSMenuItem.separator())
@@ -211,6 +219,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+        
+        // Update launch at login checkmark
+        launchAtLoginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
     }
     
     private func flashIcon() {
@@ -281,6 +292,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         preferencesWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+    
+    @objc func toggleLaunchAtLogin() {
+        do {
+            if SMAppService.mainApp.status == .enabled {
+                try SMAppService.mainApp.unregister()
+                launchAtLoginItem.state = .off
+            } else {
+                try SMAppService.mainApp.register()
+                launchAtLoginItem.state = .on
+            }
+        } catch {
+            NSLog("Launch at Login toggle failed: \(error)")
+        }
     }
     
     @objc func quitApp() {

@@ -27,10 +27,11 @@ mkdir -p "$APP_NAME.app/Contents/Resources"
 # Compile Swift files with optimizations
 swiftc RackOffApp.swift ContentView.swift VacManager.swift PreferencesView.swift RackOffConstants.swift \
     -o "$APP_NAME.app/Contents/MacOS/$APP_NAME" \
-    -target arm64-apple-macos12.0 \
+    -target arm64-apple-macos13.0 \
     -framework SwiftUI \
     -framework AppKit \
     -framework UserNotifications \
+    -framework ServiceManagement \
     -parse-as-library \
     -O \
     -whole-module-optimization \
@@ -63,7 +64,7 @@ cat > "$APP_NAME.app/Contents/Info.plist" << EOF
     <key>CFBundleIconFile</key>
     <string>RackOff</string>
     <key>LSMinimumSystemVersion</key>
-    <string>12.0</string>
+    <string>13.0</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.utilities</string>
     <key>LSUIElement</key>

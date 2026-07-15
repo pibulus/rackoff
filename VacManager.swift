@@ -916,7 +916,11 @@ class VacManager: ObservableObject {
         }
         
         if UserDefaults.standard.object(forKey: "totalBytesSaved") != nil {
-            self.totalBytesSaved = Int64(UserDefaults.standard.integer(forKey: "totalBytesSaved"))
+            if let bytesValue = UserDefaults.standard.object(forKey: "totalBytesSaved") as? Int64 {
+                self.totalBytesSaved = bytesValue
+            } else {
+                self.totalBytesSaved = Int64(UserDefaults.standard.integer(forKey: "totalBytesSaved"))
+            }
         }
         
         if UserDefaults.standard.object(forKey: "totalCleanSessions") != nil {

@@ -55,3 +55,7 @@ Package.resolved
 
 # Logs
 *.log
+
+# DMG build artifacts
+*.dmg
+dmg-staging/

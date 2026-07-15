@@ -348,7 +348,7 @@ struct FileTypeRow: View {
                         .foregroundColor(fileType.isEnabled ? .primary : .secondary)
 
                     if fileType.isEnabled {
-                        Text("→ Daily")
+                        Text("→ \(destinationLabel(for: fileType.destination))")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(accentColor.opacity(0.8))
                     }
@@ -393,6 +393,15 @@ struct FileTypeRow: View {
                 )
         )
         .contentShape(Rectangle())
+    }
+
+    private func destinationLabel(for destination: FileDestination) -> String {
+        switch destination {
+        case .daily: return "Daily folders"
+        case .typeFolder: return "Type folders"
+        case .skip: return "Skip"
+        default: return destination.rawValue
+        }
     }
 }
 

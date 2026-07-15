@@ -22,7 +22,7 @@
 			KdaNBSKOjDfPE7eAiYOYFyy5ENI=
 			</data>
 			<key>requirement</key>
-			<string>cdhash H"14c7a881bc93373c7cb99a11a6fd87e59ecfbfa1" or cdhash H"29d68d05228e8c37cf13b780898398172cb910d2"</string>
+			<string>cdhash H"29d68d05228e8c37cf13b780898398172cb910d2"</string>
 		</dict>
 		<key>Resources/PrivacyInfo.xcprivacy</key>
 		<dict>

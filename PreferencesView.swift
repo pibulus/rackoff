@@ -340,7 +340,6 @@ struct SchedulePreferences: View {
 // Folders preferences tab - Shows what's actually working
 struct FoldersPreferences: View {
     @ObservedObject var vacManager: VacManager
-    @State private var cleanDesktop = true
     
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
@@ -350,16 +349,16 @@ struct FoldersPreferences: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(RackOffColors.sunset)
                 
-                Text("Choose which folders RackOff should monitor and clean")
+                Text("RackOff cleans your Desktop and stashes files safely")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                 
                 VStack(spacing: 10) {
-                    FolderToggleRow(
+                    // Desktop — always active, not toggleable
+                    ActiveFolderRow(
                         title: "Desktop",
                         path: "~/Desktop",
                         icon: "menubar.dock.rectangle",
-                        isEnabled: $cleanDesktop,
                         accentColor: Color(red: 0.3, green: 0.5, blue: 1.0)
                     )
                     
@@ -542,12 +541,11 @@ struct AboutPreferences: View {
 
 // New helper components for enhanced preferences
 
-// Folder toggle row for source selection
-struct FolderToggleRow: View {
+// Active folder row — shows a folder that's always cleaned
+struct ActiveFolderRow: View {
     let title: String
     let path: String
     let icon: String
-    @Binding var isEnabled: Bool
     let accentColor: Color
     @State private var isHovered = false
     
@@ -555,11 +553,8 @@ struct FolderToggleRow: View {
         HStack(spacing: 14) {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(isEnabled ? 
+                .foregroundStyle(
                     LinearGradient(colors: [accentColor, accentColor.opacity(0.7)],
-                                 startPoint: .topLeading,
-                                 endPoint: .bottomTrailing) :
-                    LinearGradient(colors: [Color.gray.opacity(0.4)],
                                  startPoint: .topLeading,
                                  endPoint: .bottomTrailing))
                 .frame(width: 28)
@@ -567,7 +562,7 @@ struct FolderToggleRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(isEnabled ? .primary : .secondary)
+                    .foregroundColor(.primary)
                 Text(path)
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
@@ -575,9 +570,15 @@ struct FolderToggleRow: View {
             
             Spacer()
             
-            Toggle("", isOn: $isEnabled)
-                .toggleStyle(SwitchToggleStyle(tint: accentColor))
-                .labelsHidden()
+            Text("Active")
+                .font(.system(size: 9, weight: .medium))
+                .foregroundColor(accentColor)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    Capsule()
+                        .fill(accentColor.opacity(0.12))
+                )
         }
         .padding(12)
         .background(
