@@ -41,6 +41,12 @@ hdiutil create \
 # Clean up staging
 rm -rf dmg-staging
 
+# Sign the DMG (Spellbreak pattern) so it can be notarized and stapled.
+SIGN_IDENTITY="${SIGN_IDENTITY:-Developer ID Application: Pablo Alvarado (V433H655PN)}"
+echo "🔏 Signing DMG..."
+codesign --force --sign "$SIGN_IDENTITY" --timestamp "$DMG_NAME.dmg"
+codesign --verify --verbose "$DMG_NAME.dmg"
+
 echo ""
 echo "✨ DMG created: $DMG_NAME.dmg"
 echo ""
