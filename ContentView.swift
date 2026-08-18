@@ -413,10 +413,23 @@ struct FileTypeRow: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(fileType.isEnabled ? .primary : .secondary)
 
+                    // Nesting is a per-type choice, made right here rather than buried in
+                    // Preferences as one global switch. Two taps, always visible, so the
+                    // answer to "where does this land?" is the same control that sets it.
                     if fileType.isEnabled {
-                        Text("→ \(destinationLabel(for: fileType))")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(accentColor.opacity(0.8))
+                        HStack(spacing: 5) {
+                            nestingChip("By Date", destination: .monthly)
+                            nestingChip("By Type", destination: .typeFolder)
+
+                            // Daily/weekly/custom are only reachable from Preferences;
+                            // show rather than silently mis-report them as one of the two.
+                            if !isChipDestination(vacManager.effectiveDestination(for: fileType)) {
+                                Text(destinationLabel(for: fileType))
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(accentColor.opacity(0.75))
+                            }
+                        }
+                        .padding(.top, 1)
                     }
                 }
 
@@ -461,21 +474,48 @@ struct FileTypeRow: View {
         .contentShape(Rectangle())
     }
 
+    private func isChipDestination(_ destination: FileDestination) -> Bool {
+        destination == .monthly || destination == .typeFolder
+    }
+
+    @ViewBuilder
+    private func nestingChip(_ title: String, destination: FileDestination) -> some View {
+        let isSelected = vacManager.effectiveDestination(for: fileType) == destination
+
+        Button {
+            vacManager.setNesting(destination, for: fileType)
+        } label: {
+            Text(title)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(isSelected ? accentColor : .secondary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(
+                    Capsule()
+                        .fill(accentColor.opacity(isSelected ? 0.18 : 0.0))
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder(
+                            isSelected ? accentColor.opacity(0.55) : Color.secondary.opacity(0.25),
+                            lineWidth: 1.5
+                        )
+                )
+        }
+        .buttonStyle(.plain)
+        .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isSelected)
+        .accessibilityLabel("File \(fileType.name) \(title)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
     private func destinationLabel(for fileType: FileType) -> String {
-        switch vacManager.organizationMode {
-        case .quickArchive:
-            return "Nested by Date"
-        case .sortByType:
-            return "Category Folder (\(fileType.name))"
-        case .smartClean:
-            switch fileType.destination {
-            case .daily: return "Daily folders"
-            case .weekly: return "Weekly folders"
-            case .monthly: return "Monthly folders"
-            case .typeFolder: return "Category folder"
-            case .custom: return "Custom folder"
-            case .skip: return "Skip"
-            }
+        switch vacManager.effectiveDestination(for: fileType) {
+        case .daily: return "Daily folders"
+        case .weekly: return "Weekly folders"
+        case .monthly: return "Nested by date"
+        case .typeFolder: return "Category folder"
+        case .custom: return "Custom folder"
+        case .skip: return "Skip"
         }
     }
 }

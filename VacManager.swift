@@ -92,7 +92,7 @@ class VacManager: ObservableObject {
         ),
         FileType(
             name: "Documents",
-            extensions: [".pdf", ".doc", ".docx", ".txt", ".rtf", ".pages", ".numbers", ".key"],
+            extensions: [".pdf", ".doc", ".docx", ".txt", ".md", ".markdown", ".rtf", ".pages", ".numbers", ".key"],
             icon: "doc.text",
             isEnabled: false,
             destination: .typeFolder,
@@ -620,6 +620,45 @@ class VacManager: ObservableObject {
         }
     }
 
+    /// What a file type actually does *right now*. The two global modes are just a
+    /// single per-type destination applied to everything, so resolve that here once
+    /// and let every caller — the folder maths, the menu label, the nesting picker —
+    /// read from the same answer instead of each re-deriving it.
+    func effectiveDestination(for fileType: FileType) -> FileDestination {
+        switch organizationMode {
+        case .quickArchive: return .monthly
+        case .sortByType: return .typeFolder
+        case .smartClean: return fileType.destination
+        }
+    }
+
+    /// Per-type nesting, set straight from the main menu. Per-type destinations only
+    /// take effect in .smartClean, so the first such choice promotes the app into that
+    /// mode — and seeds every OTHER type with whatever the global mode was already
+    /// doing, so picking a nesting for Documents can't silently re-file Screenshots.
+    /// A type with an explicit custom folder keeps it.
+    func setNesting(_ destination: FileDestination, for fileType: FileType) {
+        if organizationMode != .smartClean {
+            let inherited: FileDestination = organizationMode == .sortByType ? .typeFolder : .monthly
+            for index in fileTypes.indices
+            where fileTypes[index].id != fileType.id && fileTypes[index].destination != .custom {
+                fileTypes[index].destination = inherited
+            }
+            organizationMode = .smartClean
+        }
+
+        if let index = fileTypes.firstIndex(where: { $0.id == fileType.id }) {
+            fileTypes[index].destination = destination
+        }
+        savePreferences()
+    }
+
+    private func dateString(_ format: String, _ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = format
+        return formatter.string(from: date)
+    }
+
     private func getFileDate(for fileURL: URL?) -> Date {
         guard let fileURL = fileURL else {
             return Date()
@@ -636,77 +675,41 @@ class VacManager: ObservableObject {
     }
 
     private func getDestinationFolder(for fileType: FileType, fileURL: URL? = nil) -> URL {
-        // Get the date to use (file creation date if available, otherwise today)
+        // The file's own creation date, so a file racked today still lands in the month
+        // it was actually made — the Stash reads like a diary, not like a dump log.
         let dateToUse = getFileDate(for: fileURL)
 
         let resultFolder: URL
 
-        switch organizationMode {
-        case .quickArchive:
-            // Everything goes to monthly folders based on the file's own creation
-            // date. Monthly is the sweet spot for browsing later — ~12 folders a year,
-            // each with real content to scroll, instead of a wall of near-empty days.
+        switch effectiveDestination(for: fileType) {
+        case .daily:
+            resultFolder = destinationFolder.appendingPathComponent(dateString("yyyy-MM-dd", dateToUse))
+
+        case .weekly:
+            resultFolder = destinationFolder.appendingPathComponent(dateString("yyyy-'W'ww", dateToUse))
+
+        case .monthly:
+            // Monthly is the sweet spot for browsing later — ~12 folders a year, each
+            // with real content to scroll, instead of a wall of near-empty days.
             //
             // Format is "2026-06 June": the yyyy-MM prefix keeps Finder sorting the
             // months chronologically, while the month name makes the folder read like
-            // a human wrote it, not a robot. The month name is localized, so it's
-            // friendly in whatever language the user runs macOS in.
-            let yearFormatter = DateFormatter()
-            yearFormatter.dateFormat = "yyyy"
-            let yearString = yearFormatter.string(from: dateToUse)
-            
-            let monthFormatter = DateFormatter()
-            monthFormatter.dateFormat = "MM-MMMM" // e.g. "07-July"
-            let monthString = monthFormatter.string(from: dateToUse)
-            
+            // a human wrote it. The month name is localized, so it stays friendly in
+            // whatever language the user runs macOS in.
             resultFolder = destinationFolder
-                .appendingPathComponent(yearString)
-                .appendingPathComponent(monthString)
+                .appendingPathComponent(dateString("yyyy", dateToUse))
+                .appendingPathComponent(dateString("MM-MMMM", dateToUse))
 
-        case .sortByType:
-            // Everything goes to type folders
+        case .typeFolder:
             resultFolder = destinationFolder.appendingPathComponent(fileType.name)
 
-        case .smartClean:
-            // Use per-file-type destination settings
-            switch fileType.destination {
-            case .daily:
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "yyyy-MM-dd"
-                let dateString = dateFormatter.string(from: dateToUse)
-                resultFolder = destinationFolder.appendingPathComponent(dateString)
+        case .custom:
+            // Fall back to the type folder if custom was chosen but no folder was picked.
+            resultFolder = fileType.customDestination ?? destinationFolder.appendingPathComponent(fileType.name)
 
-            case .weekly:
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "yyyy-'W'ww"
-                let dateString = dateFormatter.string(from: dateToUse)
-                resultFolder = destinationFolder.appendingPathComponent(dateString)
-
-            case .monthly:
-                let yearFormatter = DateFormatter()
-                yearFormatter.dateFormat = "yyyy"
-                let yearString = yearFormatter.string(from: dateToUse)
-                
-                let monthFormatter = DateFormatter()
-                monthFormatter.dateFormat = "MM-MMMM" // e.g. "07-July"
-                let monthString = monthFormatter.string(from: dateToUse)
-                
-                resultFolder = destinationFolder
-                    .appendingPathComponent(yearString)
-                    .appendingPathComponent(monthString)
-
-            case .typeFolder:
-                resultFolder = destinationFolder.appendingPathComponent(fileType.name)
-
-            case .custom:
-                // Use custom destination if set, otherwise fall back to type folder
-                resultFolder = fileType.customDestination ?? destinationFolder.appendingPathComponent(fileType.name)
-
-            case .skip:
-                // This case shouldn't happen since we filter enabled file types
-                // But return a safe default
-                resultFolder = destinationFolder.appendingPathComponent(fileType.name)
-            }
+        case .skip:
+            // Filtered out by activeFileTypes(); return something safe rather than crash.
+            resultFolder = destinationFolder.appendingPathComponent(fileType.name)
         }
 
         return resultFolder
@@ -965,10 +968,28 @@ class VacManager: ObservableObject {
                 fileTypes[index].customDestination = customDestURL
             }
             
+            // Extension lists are persisted per type, so a list saved by an older build
+            // shadows the compiled-in defaults forever — that is exactly how ".md" stayed
+            // missing from Documents after it was added here. Remember which defaults we
+            // last shipped, and fold in only the genuinely NEW ones, so a user who
+            // deleted an extension on purpose doesn't get it resurrected every launch.
+            let shippedDefaults = fileTypes[index].extensions
             let extensionsKey = "fileTypeExtensions_\(fileType.name)"
+            let shippedKey = "fileTypeShippedExtensions_\(fileType.name)"
+
             if let savedExtensions = UserDefaults.standard.array(forKey: extensionsKey) as? [String] {
-                fileTypes[index].extensions = savedExtensions
+                let previouslyShipped = UserDefaults.standard.array(forKey: shippedKey) as? [String] ?? []
+                let newlyShipped = shippedDefaults.filter {
+                    !previouslyShipped.contains($0) && !savedExtensions.contains($0)
+                }
+                let merged = savedExtensions + newlyShipped
+                fileTypes[index].extensions = merged
+                // Persist the merged list in the SAME breath as the shipped marker. Write
+                // only the marker and the next launch sees the un-merged list with the new
+                // extensions already marked as "seen" — and silently drops them again.
+                UserDefaults.standard.set(merged, forKey: extensionsKey)
             }
+            UserDefaults.standard.set(shippedDefaults, forKey: shippedKey)
         }
 
         loadRecentlyRacked()

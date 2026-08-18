@@ -137,6 +137,28 @@ if [[ -f "$DMG_PATH" ]]; then
     fi
 fi
 
+# Every MenuIconStyle raw value must be a REAL SF Symbol. A made-up name (e.g. the
+# old "broom") renders as a blank 18x18 image, so the menu bar item is invisible and
+# nothing logs an error. Caught in the wild 2026-08-18.
+SYMBOLS=$(grep -oE 'case [a-zA-Z]+ = "[^"]+"' RackOffApp.swift | sed 's/.*= "//; s/"//')
+if [[ -z "$SYMBOLS" ]]; then
+    fail "Could not extract MenuIconStyle symbol names from RackOffApp.swift"
+else
+    MISSING=""
+    for sym in $SYMBOLS; do
+        if ! echo "import AppKit
+exit(NSImage(systemSymbolName: \"$sym\", accessibilityDescription: nil) == nil ? 1 : 0)" \
+            | swift - >/dev/null 2>&1; then
+            MISSING="$MISSING $sym"
+        fi
+    done
+    if [[ -z "$MISSING" ]]; then
+        pass "All menu bar SF Symbols resolve"
+    else
+        fail "Menu bar SF Symbols do not exist (icon renders blank):$MISSING"
+    fi
+fi
+
 rm -f /tmp/rackoff-codesign.log \
     /tmp/rackoff-codesign-details.log \
     /tmp/rackoff-spctl-app.log \

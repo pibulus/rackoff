@@ -62,7 +62,6 @@ struct AboutView: View {
 }
 
 enum MenuIconStyle: String, CaseIterable {
-    case broom = "broom"
     case sparkles = "sparkles"
     case wandStars = "wand.and.stars"
     case wind = "wind"
@@ -73,7 +72,6 @@ enum MenuIconStyle: String, CaseIterable {
     
     var displayName: String {
         switch self {
-        case .broom: return "🧹 Broom"
         case .sparkles: return "✨ Sparkles"
         case .wandStars: return "🪄 Wand & Stars"
         case .wind: return "💨 Wind"
@@ -103,7 +101,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var vacManager: VacManager = {
         return VacManager()
     }()
-    var currentIconStyle: MenuIconStyle = .broom
+    var currentIconStyle: MenuIconStyle = .sparkles
     var contextMenu: NSMenu!
     var undoMenuItem: NSMenuItem!
     var launchAtLoginItem: NSMenuItem!
@@ -318,7 +316,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func createIconImage() -> NSImage {
-        guard let image = NSImage(systemSymbolName: currentIconStyle.symbolName, accessibilityDescription: "RackOff") else {
+        // A missing SF Symbol must never render as an invisible menu bar item.
+        guard let image = NSImage(systemSymbolName: currentIconStyle.symbolName, accessibilityDescription: "RackOff")
+            ?? NSImage(systemSymbolName: MenuIconStyle.sparkles.symbolName, accessibilityDescription: "RackOff") else {
             return NSImage(size: NSSize(width: 18, height: 18))
         }
         let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .medium)

@@ -102,6 +102,79 @@ struct RackOffSmokeTest {
         try expect(fileManager.fileExists(atPath: source.appendingPathComponent("holiday.png").path), "Smart Clean moved media even though Media was set to Skip")
 
         try await runDailyCatchUpChecks(in: root)
+        try await runPerTypeNestingChecks(in: root)
+    }
+
+    /// Per-type nesting, set from the main menu, has to do two things at once: file the
+    /// chosen type its own way, and leave every other type exactly where it was going.
+    /// A control that quietly re-files the other three is worse than no control at all.
+    /// Also pins ".md" as a Document — it was missing from the list until 2026-08-18.
+    @MainActor
+    private static func runPerTypeNestingChecks(in root: URL) async throws {
+        let fileManager = FileManager.default
+        let base = root.appendingPathComponent("per-type", isDirectory: true)
+        let desk = base.appendingPathComponent("Desktop", isDirectory: true)
+        let arch = base.appendingPathComponent("Stash", isDirectory: true)
+        try fileManager.createDirectory(at: desk, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: arch, withIntermediateDirectories: true)
+
+        let date = fixtureDate()
+        try writeFixture("Screenshot 2024-02-03 at 12.00.00 PM.png", in: desk, date: date)
+        try writeFixture("notes.md", in: desk, date: date)
+
+        let manager = VacManager(
+            loadStoredPreferences: false,
+            sourceFolder: desk,
+            destinationFolder: arch,
+            requestNotifications: false,
+            sendNotifications: false,
+            ensureFolderAccess: false,
+            setupSchedule: false,
+            persistPreferences: false
+        )
+        manager.fileTypes.indices.forEach { manager.fileTypes[$0].isEnabled = true }
+        manager.organizationMode = .quickArchive
+
+        guard let documents = manager.fileTypes.first(where: { $0.name == "Documents" }),
+              let screenshots = manager.fileTypes.first(where: { $0.name == "Screenshots" }) else {
+            throw SmokeTestFailure.failed("Default file types are missing Documents or Screenshots")
+        }
+
+        try expect(manager.effectiveDestination(for: documents) == .monthly
+                   && manager.effectiveDestination(for: screenshots) == .monthly,
+                   "Quick Archive should resolve every type to monthly nesting")
+
+        // The move the main menu makes: Documents by type, everything else untouched.
+        manager.setNesting(.typeFolder, for: documents)
+
+        // FileType is a struct, so re-read from the manager rather than trusting the
+        // copies captured above — stale copies are the whole reason this can look right
+        // in a test and still be wrong (or vice versa) on screen.
+        guard let freshScreenshots = manager.fileTypes.first(where: { $0.name == "Screenshots" }),
+              let freshDocuments = manager.fileTypes.first(where: { $0.name == "Documents" }) else {
+            throw SmokeTestFailure.failed("File types vanished after setting per-type nesting")
+        }
+
+        try expect(manager.organizationMode == .smartClean,
+                   "Choosing a per-type nesting did not promote the app into per-type mode")
+        try expect(manager.effectiveDestination(for: freshDocuments) == .typeFolder,
+                   "Documents did not take the per-type nesting it was given")
+        try expect(manager.effectiveDestination(for: freshScreenshots) == .monthly,
+                   "Setting nesting on Documents changed where Screenshots go")
+
+        let result = await manager.vacuum()
+        try expect(result.errors.isEmpty, "Per-type nesting returned errors: \(result.errors)")
+
+        let yearFormatter = DateFormatter()
+        yearFormatter.dateFormat = "yyyy"
+        let monthFormatter = DateFormatter()
+        monthFormatter.dateFormat = "MM-MMMM"
+        let monthFolder = "\(yearFormatter.string(from: date))/\(monthFormatter.string(from: date))"
+
+        try expect(fileManager.fileExists(atPath: arch.appendingPathComponent("Documents/notes.md").path),
+                   "Markdown did not land in the Documents category folder (.md missing from the extension list?)")
+        try expect(fileManager.fileExists(atPath: arch.appendingPathComponent("\(monthFolder)/Screenshot 2024-02-03 at 12.00.00 PM.png").path),
+                   "Screenshots stopped nesting by date after Documents was set to nest by type")
     }
 
     /// The daily schedule's promise ("clean every day at 9") only holds because of the
