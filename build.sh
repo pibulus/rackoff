@@ -7,8 +7,12 @@ set -euo pipefail
 
 APP_NAME="RackOff"
 BUNDLE_ID="com.pablo.rackoff"
-VERSION="1.0"
-BUILD_NUMBER="1"
+# Overridable so an App Store upload can bump without editing this file. App Store
+# Connect rejects a CFBundleVersion it has already seen, and a hardcoded "1" turns
+# your second upload ever into a scavenger hunt for where the number lives.
+# Same idiom NibNab's build.sh already uses.
+VERSION="${VERSION:-1.0}"
+BUILD_NUMBER="${BUILD_NUMBER:-1}"
 
 # Code signing identity.
 # - Ad-hoc ("-") works for local dev only (no distribution).
