@@ -312,7 +312,9 @@ xcodebuild -exportArchive \
    - [ ] Keywords
    - [ ] Screenshots (3-5 required)
    - [ ] App icon (1024x1024)
-   - [ ] Category: Productivity or Utilities
+   - [ ] Category: Productivity (Secondary: Utilities)
+   - [ ] Price: **$9.99 USD** (Tier 10 / $14.99 AUD) — One-time purchase
+   - [ ] In-App Purchases: None (Cartridge model: pay once, owned forever)
    - [ ] Age rating (4+)
    - [ ] Privacy policy URL
    - [ ] Support URL

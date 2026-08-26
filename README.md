@@ -67,5 +67,6 @@ Built in Bangkok with plenty of coffee and mild frustration at my own desktop.
 ---
 
 Part of SoftStack.
-$1 apps that do one thing well and don't make it weird.
+Cartridge apps that do one thing well and don't make it weird.
+$9.99 once, yours forever. No subscriptions.
 Light touch. Real work.
