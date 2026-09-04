@@ -59,3 +59,10 @@ Package.resolved
 # DMG build artifacts
 *.dmg
 dmg-staging/
+# Build output — the app bundle and installers are produced by build.sh
+# and create-dmg.sh, so tracking them made every build show up as a dirty
+# working tree. Matches spellbreak/nibnab/talktype-mac.
+RackOff.app/
+*.dmg
+build/
+dist/
