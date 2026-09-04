@@ -30,17 +30,29 @@ mkdir -p "$APP_NAME.app/Contents/MacOS"
 mkdir -p "$APP_NAME.app/Contents/Resources"
 
 # Compile Swift files with optimizations
-swiftc RackOffApp.swift ContentView.swift VacManager.swift PreferencesView.swift RackOffConstants.swift \
-    -o "$APP_NAME.app/Contents/MacOS/$APP_NAME" \
-    -target arm64-apple-macos13.0 \
-    -framework SwiftUI \
-    -framework AppKit \
-    -framework UserNotifications \
-    -framework ServiceManagement \
-    -parse-as-library \
-    -O \
-    -whole-module-optimization \
-    -enable-library-evolution
+# Compile per architecture, then fuse. lipo output is UNSIGNED — the
+# codesign step further down is what makes it runnable, since Apple
+# Silicon will not spawn unsigned arm64 code (errno 163).
+_rackoff_build_arch() {
+    swiftc RackOffApp.swift ContentView.swift VacManager.swift PreferencesView.swift RackOffConstants.swift \
+        -o "$2" \
+        -target "$1-apple-macos13.0" \
+        -framework SwiftUI \
+        -framework AppKit \
+        -framework UserNotifications \
+        -framework ServiceManagement \
+        -parse-as-library \
+        -O \
+        -whole-module-optimization \
+        -enable-library-evolution
+}
+
+ARCH_TMP="$(mktemp -d)"
+trap 'rm -rf "$ARCH_TMP"' EXIT
+_rackoff_build_arch arm64 "$ARCH_TMP/arm64"
+_rackoff_build_arch x86_64 "$ARCH_TMP/x86_64"
+lipo -create -output "$APP_NAME.app/Contents/MacOS/$APP_NAME" \
+    "$ARCH_TMP/arm64" "$ARCH_TMP/x86_64"
 
 # Create Info.plist with App Store required keys
 cat > "$APP_NAME.app/Contents/Info.plist" << EOF
