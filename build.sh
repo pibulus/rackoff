@@ -114,11 +114,6 @@ cat > "$APP_NAME.app/Contents/Info.plist" << EOF
 </plist>
 EOF
 
-# Copy entitlements file
-if [ -f "RackOff.entitlements" ]; then
-    cp RackOff.entitlements "$APP_NAME.app/Contents/"
-fi
-
 # Copy privacy manifest
 if [ -f "PrivacyInfo.xcprivacy" ]; then
     cp PrivacyInfo.xcprivacy "$APP_NAME.app/Contents/Resources/"
@@ -137,6 +132,7 @@ echo "🔐 Code signing..."
 codesign --force --deep --sign "$CODESIGN_IDENTITY" \
     --entitlements RackOff.entitlements \
     --options runtime \
+    --timestamp \
     "$APP_NAME.app"
 
 # Verify code signing

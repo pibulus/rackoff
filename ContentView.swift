@@ -33,85 +33,81 @@ struct ContentView: View {
     
     var body: some View {
         VStack(spacing: 12) {
-            // Header with settings and exit buttons
-            HStack {
-                Button(action: {
-                    // Tactile click animation
-                    withAnimation(.spring(response: 0.15, dampingFraction: 0.4)) {
-                        gearScale = 1.3
-                    }
-                    
-                    // Post notification
-                    NotificationCenter.default.post(name: Notification.Name("ShowPreferences"), object: nil)
-                    
-                    // Reset scale
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
-                            gearScale = 1.0
-                        }
-                    }
-                }) {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(gearHovered ? Color(red: 1.0, green: 0.5, blue: 0.3) : Color.secondary)
-                        .scaleEffect(gearScale * (gearHovered ? 1.1 : 1.0))
-                        .rotationEffect(.degrees(gearHovered ? 15 : 0))
-                }
-                .buttonStyle(PlainButtonStyle())
-                .onHover { hovering in
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                        gearHovered = hovering
-                    }
-                }
-                .help("Preferences")
-                
-                Spacer()
-                
-                // RackOff branding - centered
+            // Header with dead-center branding and symmetric left/right icon frames
+            ZStack {
                 HStack(spacing: 8) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(RackOffColors.sunset)
                     Text("RackOff")
-                        .font(.system(size: 28, weight: .heavy, design: .rounded))
+                        .font(.system(size: 26, weight: .heavy, design: .rounded))
                         .foregroundStyle(RackOffColors.sunset)
                 }
-                
-                Spacer()
-                
-                Button(action: {
-                    // Tactile click animation
-                    withAnimation(.spring(response: 0.15, dampingFraction: 0.4)) {
-                        exitScale = 0.7
+
+                HStack {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.15, dampingFraction: 0.4)) {
+                            gearScale = 1.3
+                        }
+                        NotificationCenter.default.post(name: Notification.Name("ShowPreferences"), object: nil)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+                                gearScale = 1.0
+                            }
+                        }
+                    }) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(gearHovered ? Color(red: 1.0, green: 0.5, blue: 0.3) : Color.secondary)
+                            .scaleEffect(gearScale * (gearHovered ? 1.1 : 1.0))
+                            .rotationEffect(.degrees(gearHovered ? 15 : 0))
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
                     }
-                    
-                    // Brief delay then quit
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        NSApplication.shared.terminate(nil)
-                    }
-                }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(exitHovered ? Color.red.opacity(0.8) : Color.secondary)
-                        .opacity(exitHovered ? 1.0 : 0.7)
-                        .scaleEffect(exitScale * (exitHovered ? 1.15 : 1.0))
-                        .rotationEffect(.degrees(exitHovered ? 90 : 0))
-                }
-                .buttonStyle(PlainButtonStyle())
-                .onHover { hovering in
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                        exitHovered = hovering
-                        if !hovering {
-                            exitScale = 1.0
+                    .buttonStyle(PlainButtonStyle())
+                    .onHover { hovering in
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                            gearHovered = hovering
                         }
                     }
+                    .help("Preferences")
+
+                    Spacer()
+
+                    Button(action: {
+                        withAnimation(.spring(response: 0.15, dampingFraction: 0.4)) {
+                            exitScale = 0.7
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            NSApplication.shared.terminate(nil)
+                        }
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(exitHovered ? Color.orange : Color.secondary)
+                            .opacity(exitHovered ? 1.0 : 0.7)
+                            .scaleEffect(exitScale * (exitHovered ? 1.15 : 1.0))
+                            .rotationEffect(.degrees(exitHovered ? 90 : 0))
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .onHover { hovering in
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                            exitHovered = hovering
+                            if !hovering {
+                                exitScale = 1.0
+                            }
+                        }
+                    }
+                    .help("Quit RackOff")
                 }
-                .help("Quit RackOff")
             }
-            .padding(.horizontal, 4)
-            
-            // File type toggles with more space
-            LazyVStack(spacing: 8) {
+            .frame(height: 32)
+            .padding(.horizontal, 2)
+
+            // File type toggles — non-lazy VStack with locked row heights so toggling never shifts vertical layout
+            VStack(spacing: 6) {
                 ForEach(vacManager.fileTypes) { fileType in
                     FileTypeRow(
                         fileType: fileType,
@@ -125,83 +121,86 @@ struct ContentView: View {
                     }
                 }
             }
-            .padding(.vertical, 2)
 
-            // Peek: the carpet bag or success banner
-            if showSuccess && lastCleanResult.files > 0 {
-                SuccessBannerView(
-                    filesCount: lastCleanResult.files,
-                    onOpenStash: {
-                        openStash()
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            showSuccess = false
-                        }
-                    },
-                    onDismiss: {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            showSuccess = false
-                        }
-                    }
-                )
-                .transition(.opacity.combined(with: .scale(scale: 0.95)))
-            } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.secondary)
-                        Text("Recently racked")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.secondary)
-                        
-                        Spacer()
-                        
-                        Button(action: openStash) {
-                            HStack(spacing: 3) {
-                                Text("Open Stash")
-                                Image(systemName: "arrow.up.forward.app")
+            // Peek: the carpet bag or success banner (locked to a consistent 112pt slot)
+            Group {
+                if showSuccess && lastCleanResult.files > 0 {
+                    SuccessBannerView(
+                        filesCount: lastCleanResult.files,
+                        onOpenStash: {
+                            openStash()
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                showSuccess = false
                             }
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(RackOffColors.sunset)
-                            .opacity(stashHovered ? 1.0 : 0.7)
-                            .scaleEffect(stashHovered ? 1.05 : 1.0)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .onHover { hovering in
-                            withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
-                                stashHovered = hovering
-                            }
-                            if hovering {
-                                NSCursor.pointingHand.push()
-                            } else {
-                                NSCursor.pop()
+                        },
+                        onDismiss: {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                showSuccess = false
                             }
                         }
-                    }
-                    .padding(.horizontal, 4)
-                    
-                    if vacManager.recentlyRacked.isEmpty {
-                        PeekEmptyState()
-                            .transition(.opacity)
-                    } else {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(vacManager.recentlyRacked) { item in
-                                    PeekChip(item: item)
+                    )
+                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.secondary)
+                            Text("Recently racked")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.secondary)
+
+                            Spacer()
+
+                            Button(action: openStash) {
+                                HStack(spacing: 3) {
+                                    Text("Open Stash")
+                                    Image(systemName: "arrow.up.forward.app")
+                                }
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(RackOffColors.sunset)
+                                .opacity(stashHovered ? 1.0 : 0.7)
+                                .scaleEffect(stashHovered ? 1.05 : 1.0)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .onHover { hovering in
+                                withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                                    stashHovered = hovering
+                                }
+                                if hovering {
+                                    NSCursor.pointingHand.push()
+                                } else {
+                                    NSCursor.pop()
                                 }
                             }
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 2)
                         }
-                        .padding(.vertical, 10)
                         .padding(.horizontal, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(NSColor.controlBackgroundColor).opacity(0.35))
-                        )
+
+                        if vacManager.recentlyRacked.isEmpty {
+                            PeekEmptyState()
+                                .frame(height: 86)
+                                .transition(.opacity)
+                        } else {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(vacManager.recentlyRacked) { item in
+                                        PeekChip(item: item)
+                                    }
+                                }
+                                .padding(.horizontal, 6)
+                            }
+                            .frame(height: 86)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(NSColor.controlBackgroundColor).opacity(0.35))
+                            )
+                        }
                     }
                 }
             }
+            .frame(height: 110)
+
+            Spacer(minLength: 0)
 
             // Progress indicator for large operations
             if vacManager.isProcessing && vacManager.currentProgress.total > 0 {
@@ -306,10 +305,9 @@ struct ContentView: View {
             }
 
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 20)
-        .padding(.bottom, 16)
-        .frame(width: RackOffSizes.popoverWidth, height: RackOffSizes.popoverHeight)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 18)
+        .frame(width: RackOffSizes.popoverWidth, height: RackOffSizes.popoverHeight, alignment: .top)
     }
     
     func openStash() {
@@ -408,29 +406,25 @@ struct FileTypeRow: View {
                     .scaleEffect(isHovered ? 1.1 : 1.0)
                     .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isHovered)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(fileType.name)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(fileType.isEnabled ? .primary : .secondary)
 
-                    // Nesting is a per-type choice, made right here rather than buried in
-                    // Preferences as one global switch. Two taps, always visible, so the
-                    // answer to "where does this land?" is the same control that sets it.
-                    if fileType.isEnabled {
-                        HStack(spacing: 5) {
-                            nestingChip("By Date", destination: .monthly)
-                            nestingChip("By Type", destination: .typeFolder)
+                    // Keep the second line permanently present so toggling a category
+                    // never changes row height or shifts the popover vertically.
+                    HStack(spacing: 5) {
+                        nestingChip("By Date", destination: .monthly)
+                        nestingChip("By Type", destination: .typeFolder)
 
-                            // Daily/weekly/custom are only reachable from Preferences;
-                            // show rather than silently mis-report them as one of the two.
-                            if !isChipDestination(vacManager.effectiveDestination(for: fileType)) {
-                                Text(destinationLabel(for: fileType))
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundColor(accentColor.opacity(0.75))
-                            }
+                        if !isChipDestination(vacManager.effectiveDestination(for: fileType)) {
+                            Text(destinationLabel(for: fileType))
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(accentColor.opacity(0.75))
                         }
-                        .padding(.top, 1)
                     }
+                    .opacity(fileType.isEnabled ? 1.0 : 0.35)
+                    .allowsHitTesting(fileType.isEnabled)
                 }
 
                 Spacer()
@@ -461,8 +455,8 @@ struct FileTypeRow: View {
             .scaleEffect(toggleScale * 0.85)
             .padding(.trailing, 8)
         }
-        .padding(.vertical, 8)
-        .padding(.leading, 14)
+        .frame(height: 52)
+        .padding(.leading, 12)
         .padding(.trailing, 6)
         .background(
             RoundedRectangle(cornerRadius: 10)
@@ -542,8 +536,8 @@ struct PeekEmptyState: View {
 
             Spacer()
         }
-        .padding(.vertical, 14)
         .padding(.horizontal, 14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(NSColor.controlBackgroundColor).opacity(0.2))
@@ -718,6 +712,6 @@ struct SuccessBannerView: View {
                         .stroke(RackOffColors.sunset.opacity(0.2), lineWidth: 1)
                 )
         )
-        .frame(height: 100)
+        .frame(height: 110)
     }
 }

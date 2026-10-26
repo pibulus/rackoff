@@ -126,6 +126,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             statusButton.target = self
         }
         
+        // Setup standard Edit/App menu so ⌘V/⌘C/⌘Q work everywhere
+        setupMainMenu()
+        
         // Setup popovers
         setupPopovers()
         
@@ -133,18 +136,49 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupContextMenu()
     }
     
+    private func setupMainMenu() {
+        let mainMenu = NSMenu()
+        
+        let appMenuItem = NSMenuItem()
+        let appMenu = NSMenu()
+        appMenu.addItem(withTitle: "About RackOff", action: #selector(showAbout), keyEquivalent: "")
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "Preferences…", action: #selector(showPreferences), keyEquivalent: ",")
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "Quit RackOff", action: #selector(quitApp), keyEquivalent: "q")
+        appMenuItem.submenu = appMenu
+        mainMenu.addItem(appMenuItem)
+        
+        let editMenuItem = NSMenuItem()
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editMenuItem.submenu = editMenu
+        mainMenu.addItem(editMenuItem)
+        
+        NSApp.mainMenu = mainMenu
+    }
+    
     private func setupPopovers() {
-        // Setup main popover
+        // Setup main popover with locked preferredContentSize
         let contentView = ContentView().environmentObject(vacManager)
-        popover.contentSize = NSSize(width: 340, height: 500)
+        let popoverSize = NSSize(width: RackOffSizes.popoverWidth, height: RackOffSizes.popoverHeight)
+        let hostingController = NSHostingController(rootView: contentView)
+        hostingController.preferredContentSize = popoverSize
+        popover.contentSize = popoverSize
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: contentView)
+        popover.contentViewController = hostingController
         
         // Setup about popover
         let aboutView = AboutView()
-        aboutPopover.contentSize = NSSize(width: 300, height: 220)
+        let aboutSize = NSSize(width: 300, height: 220)
+        let aboutHosting = NSHostingController(rootView: aboutView)
+        aboutHosting.preferredContentSize = aboutSize
+        aboutPopover.contentSize = aboutSize
         aboutPopover.behavior = .transient
-        aboutPopover.contentViewController = NSHostingController(rootView: aboutView)
+        aboutPopover.contentViewController = aboutHosting
     }
     
     @objc func handleClick() {
